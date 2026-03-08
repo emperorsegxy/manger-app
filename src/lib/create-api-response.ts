@@ -67,6 +67,17 @@ export const createSuccessResponse = <T = any>({
 const timestamp = () => new Date().toISOString();
 
 
+export const statusToErrorCode = (statusCode: number): ErrorCode => {
+    switch (statusCode) {
+        case 400: return ErrorCode.BadRequest;
+        case 401: return ErrorCode.Unauthorized;
+        case 403: return ErrorCode.Forbidden;
+        case 404: return ErrorCode.NotFound;
+        case 409: return ErrorCode.Conflict;
+        default: return ErrorCode.SystemErr;
+    }
+};
+
 export const createErrorResponse = ({
                    res,
                    message = "An unexpected error occurred",

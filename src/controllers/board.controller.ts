@@ -3,37 +3,49 @@ import { AppError } from "@/errors/AppError";
 import { getBoardList } from "@services/board/get-board-list";
 import { createBoard } from "@services/board/create-board";
 import { updateBoard } from "@services/board/update-board";
+import { deleteBoard } from "@services/board/delete-board";
+import { createSuccessResponse, createErrorResponse, statusToErrorCode, ErrorCode } from "@/lib/create-api-response";
 
 export const getBoardListController = async (req: Request, res: Response) => {
     try {
         const { projectId } = req.query;
         if (!projectId || typeof projectId !== "string") {
-            return res.status(400).json({ message: "projectId query param is required" });
+            return createErrorResponse({ res, statusCode: 400, message: "projectId query param is required", errorCode: ErrorCode.BadRequest });
         }
         const items = await getBoardList({ projectId, requestingUserId: req.user!.id });
-        res.status(200).send({ message: "Successfully retrieved items", data: { items } });
+        return createSuccessResponse({ res, message: "Successfully retrieved items", data: { items } });
     } catch (err) {
-        if (err instanceof AppError) return res.status(err.statusCode).json({ message: err.message });
-        res.status(500).json({ message: "An unhandled error has occurred" });
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
     }
 };
 
 export const createBoardController = async (req: Request, res: Response) => {
     try {
         const board = await createBoard({ ...req.body, requestingUserId: req.user!.id });
-        res.status(201).send({ message: "Successfully created a new board", data: { board } });
+        return createSuccessResponse({ res, statusCode: 201, message: "Successfully created a new board", data: { board } });
     } catch (err) {
-        if (err instanceof AppError) return res.status(err.statusCode).json({ message: err.message });
-        res.status(500).json({ message: "An unhandled error has occurred" });
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
     }
 };
 
 export const updateBoardController = async (req: Request, res: Response) => {
     try {
         const board = await updateBoard({ ...req.body, requestingUserId: req.user!.id });
-        res.status(200).send({ message: "Successfully updated board", data: { board } });
+        return createSuccessResponse({ res, message: "Successfully updated board", data: { board } });
     } catch (err) {
-        if (err instanceof AppError) return res.status(err.statusCode).json({ message: err.message });
-        res.status(500).json({ message: "An unhandled error has occurred" });
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
+    }
+};
+
+export const deleteBoardController = async (req: Request, res: Response) => {
+    try {
+        await deleteBoard({ id: req.body.id, requestingUserId: req.user!.id });
+        return createSuccessResponse({ res, message: "Successfully deleted board" });
+    } catch (err) {
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
     }
 };

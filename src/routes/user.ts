@@ -1,8 +1,9 @@
 import express from "express";
 import { z } from "zod";
+import authentication from "@/middlewares/authentication";
 import { UserCreateInputObjectZodSchema } from "@generated/zod/schemas";
 import { validateZodSchema } from "@middlewares/validations/validateZodSchema";
-import { getAllUsersController, createUserController, authenticateUserController, requestPasswordResetController, resetPasswordController, verifyEmailController } from "@/controllers/user.controller";
+import { getAllUsersController, createUserController, authenticateUserController, requestPasswordResetController, resetPasswordController, verifyEmailController, deleteUserController } from "@/controllers/user.controller";
 
 const router = express.Router();
 
@@ -29,5 +30,7 @@ router.post(
     validateZodSchema(z.object({ token: z.string(), password: z.string().min(8) })),
     resetPasswordController
 );
+
+router.delete("/delete", authentication, deleteUserController);
 
 export default router;
