@@ -1,0 +1,14 @@
+register:
+  post:
+    summary: Creates a new user
+    tags:
+      - User
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../components/schemas/user.yaml#/UserCreate"
+    responses:
+      "201":
+        description: User Successfully Created

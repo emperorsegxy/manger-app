@@ -1,0 +1,36 @@
+User:
+  type: object
+  properties:
+    email:
+      type: string
+    password:
+      type: string
+    firstName:
+      type: string
+    lastName:
+      type: string
+    imgUrl:
+      type: string
+      nullable: true
+
+UserCreate:
+  type: object
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      minLength: 6
+    firstName:
+      type: string
+    lastName:
+      type: string
+    imgUrl:
+      type: string
+      nullable: true
+  required:
+    - email
+    - password
+    - firstName
+    - lastName

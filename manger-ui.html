@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manger — Kanban</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0f0f13;
+      --surface:   #17171e;
+      --surface2:  #1e1e28;
+      --surface3:  #26263a;
+      --border:    #2d2d42;
+      --accent:    #6c63ff;
+      --accent2:   #8b84ff;
+      --accent-bg: rgba(108,99,255,.12);
+      --danger:    #ff5e6c;
+      --success:   #3ecf8e;
+      --warn:      #f59e0b;
+      --text:      #e8e8f0;
+      --text2:     #9090aa;
+      --text3:     #5c5c7a;
+      --radius:    10px;
+      --radius-lg: 16px;
+      --shadow:    0 4px 24px rgba(0,0,0,.45);
+      --sidebar-w: 240px;
+    }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Scrollbar ────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── Utilities ────────────────────────────────────────────── */
+    .hidden { display: none !important; }
+    .flex { display: flex; }
+    .items-center { align-items: center; }
+    .gap-8 { gap: 8px; }
+    .gap-12 { gap: 12px; }
+    .mt-auto { margin-top: auto; }
+    .ml-auto { margin-left: auto; }
+    .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Button ───────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius); border: none; cursor: pointer;
+      font-size: 13px; font-weight: 500; transition: all .15s; line-height: 1;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--accent); color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent; color: var(--text2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+    .btn-danger { background: rgba(255,94,108,.15); color: var(--danger); border: 1px solid rgba(255,94,108,.25); }
+    .btn-danger:hover { background: rgba(255,94,108,.25); }
+    .btn-icon { padding: 7px; border-radius: 8px; }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+    .btn-full { width: 100%; }
+
+    /* ── Input ────────────────────────────────────────────────── */
+    .input-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .input-wrap label { font-size: 12px; font-weight: 500; color: var(--text2); }
+    .input {
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 9px 12px;
+      color: var(--text); font-size: 13px; outline: none; width: 100%;
+      transition: border-color .15s;
+    }
+    .input:focus { border-color: var(--accent); }
+    .input::placeholder { color: var(--text3); }
+
+    /* ── Badge ────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500;
+    }
+    .badge-purple { background: var(--accent-bg); color: var(--accent2); }
+    .badge-green  { background: rgba(62,207,142,.12); color: var(--success); }
+    .badge-warn   { background: rgba(245,158,11,.12); color: var(--warn); }
+
+    /* ══════════════════════════════════════════════════════════
+       AUTH SCREEN
+    ═══════════════════════════════════════════════════════════ */
+    #screen-auth {
+      height: 100%; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(108,99,255,.18), transparent);
+    }
+    .auth-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 40px; width: 400px;
+      box-shadow: var(--shadow);
+    }
+    .auth-logo {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 28px;
+    }
+    .auth-logo-icon {
+      width: 36px; height: 36px; background: var(--accent);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .auth-logo-name { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+    .auth-title  { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .auth-sub    { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
+    .auth-form   { display: flex; flex-direction: column; gap: 16px; }
+    .auth-row    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .auth-divider {
+      display: flex; align-items: center; gap: 12px; color: var(--text3);
+      font-size: 12px; margin: 4px 0;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .auth-switch { text-align: center; font-size: 13px; color: var(--text2); margin-top: 4px; }
+    .auth-switch a { color: var(--accent2); cursor: pointer; text-decoration: none; }
+    .auth-switch a:hover { text-decoration: underline; }
+
+    /* ══════════════════════════════════════════════════════════
+       APP SHELL
+    ═══════════════════════════════════════════════════════════ */
+    #screen-app {
+      height: 100%; display: flex; overflow: hidden;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w); background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 16px; flex-shrink: 0; overflow-y: auto;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 4px 8px 16px; border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .sidebar-logo-icon {
+      width: 28px; height: 28px; background: var(--accent);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .sidebar-logo-name { font-size: 16px; font-weight: 700; letter-spacing: -.3px; }
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text3); padding: 8px 8px 4px;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 8px; border-radius: 8px; cursor: pointer;
+      color: var(--text2); font-size: 13px; font-weight: 500;
+      transition: all .12s; user-select: none;
+    }
+    .sidebar-item:hover { background: var(--surface3); color: var(--text); }
+    .sidebar-item.active { background: var(--accent-bg); color: var(--accent2); }
+    .sidebar-item .icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+    .sidebar-item .count {
+      margin-left: auto; background: var(--surface3); border-radius: 99px;
+      font-size: 10px; padding: 1px 6px; color: var(--text3);
+    }
+    .sidebar-project-dot {
+      width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0;
+    }
+    .sidebar-user {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 8px; border-top: 1px solid var(--border); margin-top: auto;
+      cursor: pointer; border-radius: 8px; transition: background .12s;
+    }
+    .sidebar-user:hover { background: var(--surface3); }
+    .avatar {
+      width: 30px; height: 30px; border-radius: 99px;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 600;
+      flex-shrink: 0; color: #fff;
+    }
+    .avatar-sm { width: 24px; height: 24px; font-size: 10px; }
+    .avatar-lg { width: 40px; height: 40px; font-size: 16px; }
+    .sidebar-user-info { flex: 1; overflow: hidden; }
+    .sidebar-user-name { font-size: 13px; font-weight: 500; }
+    .sidebar-user-email { font-size: 11px; color: var(--text3); }
+
+    /* ── Main area ────────────────────────────────────────────── */
+    .main {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Top bar ──────────────────────────────────────────────── */
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 24px; height: 56px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .topbar-title { font-size: 16px; font-weight: 600; }
+    .topbar-breadcrumb {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; color: var(--text2);
+    }
+    .topbar-breadcrumb .sep { color: var(--text3); }
+    .topbar-breadcrumb .current { color: var(--text); font-weight: 500; }
+    .topbar-breadcrumb span { cursor: pointer; }
+    .topbar-breadcrumb span:hover { color: var(--text); }
+
+    /* ══════════════════════════════════════════════════════════
+       PROJECTS VIEW
+    ═══════════════════════════════════════════════════════════ */
+    #view-projects {
+      flex: 1; overflow-y: auto; padding: 28px 28px;
+    }
+    .view-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px;
+    }
+    .view-header h2 { font-size: 20px; font-weight: 700; flex: 1; }
+
+    .projects-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .project-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px; cursor: pointer;
+      transition: all .15s; position: relative; overflow: hidden;
+    }
+    .project-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .project-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .project-card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .project-card-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .project-card-meta { flex: 1; }
+    .project-card-name { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+    .project-card-owner { font-size: 12px; color: var(--text2); }
+    .project-card-stats {
+      display: flex; gap: 16px; padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .project-stat { font-size: 12px; color: var(--text2); }
+    .project-stat strong { font-size: 16px; font-weight: 700; color: var(--text); display: block; }
+    .project-card-new {
+      border: 2px dashed var(--border); display: flex;
+      align-items: center; justify-content: center; flex-direction: column;
+      gap: 8px; color: var(--text3); font-size: 13px; min-height: 140px;
+    }
+    .project-card-new:hover { border-color: var(--accent); color: var(--accent2); }
+    .project-card-new .plus { font-size: 28px; font-weight: 300; }
+
+    /* color accent strips per project */
+    .color-purple::before { background: var(--accent); }
+    .color-green::before  { background: var(--success); }
+    .color-warn::before   { background: var(--warn); }
+    .color-pink::before   { background: #f472b6; }
+    .color-blue::before   { background: #60a5fa; }
+
+    /* ══════════════════════════════════════════════════════════
+       BOARDS VIEW
+    ═══════════════════════════════════════════════════════════ */
+    #view-boards {
+      flex: 1; overflow-y: auto; padding: 28px;
+    }
+    .boards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px; margin-top: 24px;
+    }
+    .board-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 20px; cursor: pointer;
+      transition: all .15s;
+    }
+    .board-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .board-card-icon { font-size: 24px; margin-bottom: 12px; }
+    .board-card-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .board-card-meta { font-size: 12px; color: var(--text2); }
+    .board-card-new {
+      border: 2px dashed var(--border); display: flex;
+      align-items: center; justify-content: center; flex-direction: column;
+      gap: 6px; color: var(--text3); font-size: 12px; min-height: 120px;
+    }
+    .board-card-new:hover { border-color: var(--accent); color: var(--accent2); }
+
+    /* ══════════════════════════════════════════════════════════
+       KANBAN VIEW
+    ═══════════════════════════════════════════════════════════ */
+    #view-kanban {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .kanban-body {
+      flex: 1; display: flex; gap: 14px;
+      padding: 20px 24px; overflow-x: auto; overflow-y: hidden;
+      align-items: flex-start;
+    }
+    .kanban-col {
+      width: 272px; flex-shrink: 0; display: flex; flex-direction: column;
+    }
+    .kanban-col-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 4px 10px; user-select: none;
+    }
+    .col-dot {
+      width: 8px; height: 8px; border-radius: 99px; flex-shrink: 0;
+    }
+    .kanban-col-title {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--text2); flex: 1;
+    }
+    .col-count {
+      background: var(--surface3); border-radius: 99px;
+      font-size: 11px; padding: 1px 7px; color: var(--text3);
+    }
+    .kanban-cards { display: flex; flex-direction: column; gap: 8px; }
+    .task-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px;
+      cursor: grab; transition: all .15s;
+      position: relative;
+    }
+    .task-card:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .task-card:active { cursor: grabbing; }
+    .task-title { font-size: 13px; font-weight: 500; margin-bottom: 8px; line-height: 1.4; }
+    .task-desc { font-size: 12px; color: var(--text3); margin-bottom: 10px; line-height: 1.4; }
+    .task-footer { display: flex; align-items: center; gap: 6px; }
+    .task-priority {
+      width: 6px; height: 6px; border-radius: 99px; flex-shrink: 0;
+    }
+    .task-id { font-size: 10px; color: var(--text3); font-weight: 500; }
+    .task-assignees { display: flex; margin-left: auto; }
+    .task-assignees .avatar { margin-left: -6px; border: 2px solid var(--surface2); }
+    .kanban-add-card {
+      margin-top: 8px; display: flex; align-items: center; gap: 6px;
+      padding: 8px; border-radius: var(--radius); cursor: pointer;
+      color: var(--text3); font-size: 12px; font-weight: 500;
+      transition: all .12s;
+    }
+    .kanban-add-card:hover { background: var(--surface3); color: var(--text2); }
+    .kanban-add-col {
+      width: 240px; flex-shrink: 0;
+      background: var(--surface); border: 2px dashed var(--border);
+      border-radius: var(--radius-lg); padding: 16px;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px; cursor: pointer;
+      color: var(--text3); font-size: 12px; transition: all .15s;
+      height: 100px; align-self: flex-start;
+    }
+    .kanban-add-col:hover { border-color: var(--accent); color: var(--accent2); }
+
+    /* priority colors */
+    .prio-high   { background: var(--danger); }
+    .prio-med    { background: var(--warn); }
+    .prio-low    { background: var(--success); }
+
+    /* col dot colors */
+    .dot-purple { background: var(--accent); }
+    .dot-blue   { background: #60a5fa; }
+    .dot-yellow { background: var(--warn); }
+    .dot-green  { background: var(--success); }
+    .dot-pink   { background: #f472b6; }
+
+    /* ══════════════════════════════════════════════════════════
+       MODALS
+    ═══════════════════════════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px); display: flex;
+      align-items: center; justify-content: center; z-index: 100;
+      animation: fadeIn .15s;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 28px; width: 440px;
+      box-shadow: var(--shadow); animation: slideUp .2s;
+    }
+    @keyframes slideUp { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-lg { width: 580px; }
+    .modal-header { display: flex; align-items: center; margin-bottom: 20px; }
+    .modal-title { font-size: 16px; font-weight: 600; flex: 1; }
+    .modal-close {
+      background: transparent; border: none; color: var(--text3);
+      cursor: pointer; font-size: 18px; padding: 4px; border-radius: 6px;
+      transition: all .12s; line-height: 1;
+    }
+    .modal-close:hover { background: var(--surface3); color: var(--text); }
+    .modal-form { display: flex; flex-direction: column; gap: 16px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 8px; justify-content: flex-end; }
+
+    /* Task detail modal */
+    .task-detail-header { margin-bottom: 16px; }
+    .task-detail-title-input {
+      background: transparent; border: none; outline: none;
+      font-size: 18px; font-weight: 600; color: var(--text);
+      width: 100%; border-bottom: 1px solid transparent;
+      padding-bottom: 4px; transition: border-color .15s;
+    }
+    .task-detail-title-input:focus { border-color: var(--accent); }
+    .task-detail-body { display: grid; grid-template-columns: 1fr 180px; gap: 20px; }
+    .task-detail-desc textarea {
+      width: 100%; min-height: 120px; background: var(--surface3);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--text); font-size: 13px; padding: 10px;
+      outline: none; resize: vertical; line-height: 1.5;
+    }
+    .task-detail-desc textarea:focus { border-color: var(--accent); }
+    .task-detail-meta { display: flex; flex-direction: column; gap: 14px; }
+    .task-meta-row { font-size: 12px; }
+    .task-meta-label { color: var(--text3); margin-bottom: 5px; font-weight: 500; }
+    .task-meta-value { color: var(--text2); }
+    .col-select {
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .col-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+      font-size: 12px; color: var(--text2); transition: background .1s;
+    }
+    .col-option:hover { background: var(--surface3); }
+    .col-option.selected { background: var(--accent-bg); color: var(--accent2); }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    .toast-container {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; flex-direction: column; gap: 8px; z-index: 999;
+    }
+    .toast {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 12px 16px;
+      box-shadow: var(--shadow); display: flex; align-items: center; gap: 10px;
+      font-size: 13px; animation: slideUp .2s;
+      min-width: 240px; max-width: 320px;
+    }
+    .toast-icon { font-size: 16px; }
+    .toast.success { border-color: rgba(62,207,142,.4); }
+    .toast.error   { border-color: rgba(255,94,108,.4); }
+
+    /* ── Empty state ──────────────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; padding: 60px;
+      color: var(--text3); text-align: center;
+    }
+    .empty-state .icon { font-size: 48px; opacity: .4; }
+    .empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text2); }
+    .empty-state p  { font-size: 13px; max-width: 260px; line-height: 1.5; }
+
+    /* ── Search bar ───────────────────────────────────────────── */
+    .search-wrap {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 7px 12px; flex: 1; max-width: 280px;
+    }
+    .search-wrap input {
+      background: transparent; border: none; outline: none;
+      color: var(--text); font-size: 13px; flex: 1;
+    }
+    .search-wrap input::placeholder { color: var(--text3); }
+    .search-icon { color: var(--text3); font-size: 14px; }
+
+    /* ── Tabs ─────────────────────────────────────────────────── */
+    .tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface3); border-radius: 9px; }
+    .tab-btn {
+      padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 500;
+      cursor: pointer; border: none; background: transparent; color: var(--text2);
+      transition: all .12s;
+    }
+    .tab-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+
+    /* ── Progress bar ─────────────────────────────────────────── */
+    .progress-bar {
+      height: 4px; background: var(--surface3); border-radius: 99px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 99px; background: var(--accent);
+      transition: width .3s;
+    }
+
+    /* ── Context menu ─────────────────────────────────────────── */
+    .ctx-menu {
+      position: fixed; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: var(--shadow); z-index: 200;
+      min-width: 160px; padding: 4px; animation: fadeIn .1s;
+    }
+    .ctx-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+      color: var(--text2); transition: background .1s;
+    }
+    .ctx-item:hover { background: var(--surface3); color: var(--text); }
+    .ctx-item.danger { color: var(--danger); }
+    .ctx-item.danger:hover { background: rgba(255,94,108,.1); }
+    .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+    /* ── Filter bar (kanban) ──────────────────────────────────── */
+    .filter-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 24px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .filter-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 99px;
+      background: var(--surface3); border: 1px solid var(--border);
+      font-size: 11px; cursor: pointer; color: var(--text2);
+      transition: all .12s;
+    }
+    .filter-chip:hover, .filter-chip.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent2); }
+
+    /* Avatar group */
+    .avatar-group { display: flex; }
+    .avatar-group .avatar { margin-left: -8px; border: 2px solid var(--surface); }
+    .avatar-group .avatar:first-child { margin-left: 0; }
+
+    /* ══ INLINE CREATION FORM ═══════════════════════════════════ */
+    .inline-form {
+      background: var(--surface2); border: 1px solid var(--accent);
+      border-radius: var(--radius); padding: 10px; display: flex;
+      flex-direction: column; gap: 8px; margin-top: 8px;
+    }
+    .inline-form input {
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 10px;
+      color: var(--text); font-size: 13px; outline: none; width: 100%;
+    }
+    .inline-form input:focus { border-color: var(--accent); }
+    .inline-form-actions { display: flex; gap: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ AUTH SCREEN ══════════════ -->
+<div id="screen-auth">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">🗂</div>
+      <span class="auth-logo-name">manger</span>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="auth-login">
+      <div class="auth-title">Welcome back</div>
+      <div class="auth-sub">Sign in to your workspace</div>
+      <div class="auth-form">
+        <div class="input-wrap">
+          <label>Email address</label>
+          <input class="input" type="email" placeholder="you@company.com" id="login-email" />
+        </div>
+        <div class="input-wrap">
+          <label>Password</label>
+          <input class="input" type="password" placeholder="••••••••" id="login-pw" />
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doLogin()">Sign in</button>
+        <div class="auth-switch">
+          Don't have an account? <a onclick="showRegister()">Create one</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="auth-register" class="hidden">
+      <div class="auth-title">Create account</div>
+      <div class="auth-sub">Start managing your projects</div>
+      <div class="auth-form">
+        <div class="auth-row">
+          <div class="input-wrap">
+            <label>First name</label>
+            <input class="input" placeholder="Ada" />
+          </div>
+          <div class="input-wrap">
+            <label>Last name</label>
+            <input class="input" placeholder="Lovelace" />
+          </div>
+        </div>
+        <div class="input-wrap">
+          <label>Email address</label>
+          <input class="input" type="email" placeholder="you@company.com" />
+        </div>
+        <div class="input-wrap">
+          <label>Password</label>
+          <input class="input" type="password" placeholder="Min. 6 characters" />
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doLogin()">Create account</button>
+        <div class="auth-switch">
+          Already have an account? <a onclick="showLogin()">Sign in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div id="screen-app" class="hidden">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🗂</div>
+      <span class="sidebar-logo-name">manger</span>
+    </div>
+
+    <div class="sidebar-section-label">Navigation</div>
+    <div class="sidebar-item active" id="nav-projects" onclick="showProjects()">
+      <span class="icon">🏠</span> Projects
+    </div>
+    <div class="sidebar-item" id="nav-members" onclick="showToast('Members panel coming soon', '👥')">
+      <span class="icon">👥</span> Members
+      <span class="count">4</span>
+    </div>
+    <div class="sidebar-item" onclick="showToast('Settings coming soon', '⚙️')">
+      <span class="icon">⚙️</span> Settings
+    </div>
+
+    <div class="sidebar-section-label" style="margin-top:12px">My Projects</div>
+    <div id="sidebar-projects-list"></div>
+
+    <div class="sidebar-user" id="sidebar-user-btn">
+      <div class="avatar" id="sidebar-avatar">AL</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name truncate" id="sidebar-username">Ada Lovelace</div>
+        <div class="sidebar-user-email truncate" id="sidebar-email">ada@manger.dev</div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TOP BAR -->
+    <div class="topbar" id="topbar">
+      <div class="topbar-title">Projects</div>
+      <div class="ml-auto flex items-center gap-8">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input placeholder="Search..." />
+        </div>
+        <button class="btn btn-ghost btn-icon" title="Notifications" onclick="showToast('No new notifications', '🔔')">🔔</button>
+      </div>
+    </div>
+
+    <!-- PROJECTS VIEW -->
+    <div id="view-projects" class="hidden">
+      <div class="view-header">
+        <h2>All Projects</h2>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-project')">
+          + New Project
+        </button>
+      </div>
+      <div class="projects-grid" id="projects-grid"></div>
+    </div>
+
+    <!-- BOARDS VIEW -->
+    <div id="view-boards" class="hidden">
+      <div class="view-header">
+        <h2 id="boards-project-name">Project Boards</h2>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-board')">
+          + New Board
+        </button>
+      </div>
+      <p style="color:var(--text2);font-size:13px;">All boards for this project. Each board contains columns and tasks.</p>
+      <div class="boards-grid" id="boards-grid"></div>
+    </div>
+
+    <!-- KANBAN VIEW -->
+    <div id="view-kanban" class="hidden">
+      <div class="filter-bar">
+        <div class="filter-chip active">All tasks</div>
+        <div class="filter-chip">🔴 High</div>
+        <div class="filter-chip">🟡 Medium</div>
+        <div class="filter-chip">🟢 Low</div>
+        <div class="filter-chip" style="margin-left:auto">
+          👁 Board view
+        </div>
+        <div class="filter-chip" onclick="showToast('List view coming soon','📋')">📋 List view</div>
+      </div>
+      <div class="kanban-body" id="kanban-body"></div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /screen-app -->
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- New Project Modal -->
+<div id="modal-new-project" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">New Project</div>
+      <button class="modal-close" onclick="closeModal('modal-new-project')">✕</button>
+    </div>
+    <div class="modal-form">
+      <div class="input-wrap">
+        <label>Project name</label>
+        <input class="input" placeholder="e.g. Website Redesign" id="new-project-name" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-new-project')">Cancel</button>
+        <button class="btn btn-primary" onclick="createProject()">Create project</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Board Modal -->
+<div id="modal-new-board" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">New Board</div>
+      <button class="modal-close" onclick="closeModal('modal-new-board')">✕</button>
+    </div>
+    <div class="modal-form">
+      <div class="input-wrap">
+        <label>Board name</label>
+        <input class="input" placeholder="e.g. Sprint 1, Backlog…" id="new-board-name" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-new-board')">Cancel</button>
+        <button class="btn btn-primary" onclick="createBoard()">Create board</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Task Detail Modal -->
+<div id="modal-task-detail" class="modal-overlay hidden">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="badge badge-purple" id="td-task-id">TSK-001</div>
+      <button class="modal-close" style="margin-left:auto" onclick="closeModal('modal-task-detail')">✕</button>
+    </div>
+    <div class="task-detail-header">
+      <input class="task-detail-title-input" id="td-title" value="Task title goes here" />
+    </div>
+    <div class="task-detail-body">
+      <div class="task-detail-desc">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">DESCRIPTION</div>
+        <textarea id="td-desc" placeholder="Add a description…">No description provided.</textarea>
+      </div>
+      <div class="task-detail-meta">
+        <div class="task-meta-row">
+          <div class="task-meta-label">STATUS</div>
+          <div class="col-select" id="td-col-select"></div>
+        </div>
+        <div class="task-meta-row">
+          <div class="task-meta-label">PRIORITY</div>
+          <select class="input" style="font-size:12px;padding:5px 8px">
+            <option>🔴 High</option>
+            <option selected>🟡 Medium</option>
+            <option>🟢 Low</option>
+          </select>
+        </div>
+        <div class="task-meta-row">
+          <div class="task-meta-label">ASSIGNEE</div>
+          <div class="avatar-group" style="margin-top:4px">
+            <div class="avatar avatar-sm" style="background:#6c63ff">AL</div>
+            <div class="avatar avatar-sm" style="background:#3ecf8e">JD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-task-detail')">Delete task</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-task-detail')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-task-detail');showToast('Task updated','✅')">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Project / Board Modal -->
+<div id="modal-edit" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-edit-title">Edit</div>
+      <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+    <div class="modal-form">
+      <div class="input-wrap">
+        <label>Name</label>
+        <input class="input" id="modal-edit-input" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeModal('modal-edit')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div id="ctx-menu" class="ctx-menu hidden">
+  <div class="ctx-item" id="ctx-edit" onclick="ctxEdit()">✏️ &nbsp;Rename</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctx-delete" onclick="ctxDelete()">🗑 &nbsp;Delete</div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ══════════════ JAVASCRIPT ══════════════ -->
+<script>
+/* ──────────────────────────────────────────
+   DATA
+─────────────────────────────────────────── */
+const ME = { firstName:'Ada', lastName:'Lovelace', email:'ada@manger.dev', initials:'AL' };
+
+const PROJECT_COLORS = ['color-purple','color-green','color-warn','color-pink','color-blue'];
+const PROJECT_ICONS  = ['📦','🚀','🎨','🛠','📱','🌐','🔬','⚡'];
+const BOARD_ICONS    = ['📋','🗂','⚡','🎯','🧩','🔧','🌿','🔥'];
+const COL_DOTS       = ['dot-purple','dot-blue','dot-yellow','dot-green','dot-pink'];
+const COL_COLORS_HEX = ['#6c63ff','#60a5fa','#f59e0b','#3ecf8e','#f472b6'];
+
+let projects = [
+  { id:'p1', name:'Website Redesign', boards:2, color:'color-purple', icon:'🎨', tasks:14 },
+  { id:'p2', name:'Mobile App v2',    boards:3, color:'color-green',  icon:'📱', tasks:23 },
+  { id:'p3', name:'API Platform',     boards:1, color:'color-warn',   icon:'⚡', tasks:8  },
+];
+
+let currentProject = null;
+let currentBoard   = null;
+
+let boards = {
+  p1: [
+    { id:'b1', name:'Sprint 1', cols:3, tasks:8,  icon:'📋' },
+    { id:'b2', name:'Backlog',  cols:4, tasks:6,  icon:'🗂' },
+  ],
+  p2: [
+    { id:'b3', name:'Design',   cols:3, tasks:11, icon:'🎨' },
+    { id:'b4', name:'Dev',      cols:4, tasks:8,  icon:'🛠' },
+    { id:'b5', name:'QA',       cols:2, tasks:4,  icon:'🔬' },
+  ],
+  p3: [
+    { id:'b6', name:'Backend',  cols:3, tasks:8,  icon:'⚡' },
+  ],
+};
+
+let kanbanData = {
+  b1: {
+    cols: [
+      { id:'c1', name:'To Do',      dot:'dot-purple', tasks:[
+        { id:'t1', title:'Research competitor analysis', desc:'Look into top 5 competitors for UI patterns', prio:'prio-high' },
+        { id:'t2', title:'Setup design system tokens',   desc:'Define color, spacing, type scale', prio:'prio-med' },
+        { id:'t3', title:'Draft wireframes for homepage', desc:'', prio:'prio-low' },
+      ]},
+      { id:'c2', name:'In Progress', dot:'dot-blue', tasks:[
+        { id:'t4', title:'Build navigation component',   desc:'Responsive top nav with mobile drawer', prio:'prio-high' },
+        { id:'t5', title:'Hero section implementation',  desc:'Animated hero with CTA button', prio:'prio-med' },
+      ]},
+      { id:'c3', name:'Review',      dot:'dot-yellow', tasks:[
+        { id:'t6', title:'Logo & branding assets',       desc:'Final SVG exports for all variants', prio:'prio-low' },
+      ]},
+      { id:'c4', name:'Done',        dot:'dot-green', tasks:[
+        { id:'t7', title:'Project brief approved',        desc:'', prio:'prio-low' },
+        { id:'t8', title:'Stakeholder kickoff meeting',   desc:'', prio:'prio-low' },
+      ]},
+    ]
+  }
+};
+
+/* ──────────────────────────────────────────
+   AUTH
+─────────────────────────────────────────── */
+function showRegister() {
+  document.getElementById('auth-login').classList.add('hidden');
+  document.getElementById('auth-register').classList.remove('hidden');
+}
+function showLogin() {
+  document.getElementById('auth-register').classList.add('hidden');
+  document.getElementById('auth-login').classList.remove('hidden');
+}
+function doLogin() {
+  document.getElementById('screen-auth').classList.add('hidden');
+  document.getElementById('screen-app').classList.remove('hidden');
+  // Update sidebar user info
+  document.getElementById('sidebar-avatar').textContent   = ME.initials;
+  document.getElementById('sidebar-username').textContent = ME.firstName + ' ' + ME.lastName;
+  document.getElementById('sidebar-email').textContent    = ME.email;
+  showProjects();
+}
+
+/* ──────────────────────────────────────────
+   NAVIGATION
+─────────────────────────────────────────── */
+function hideAllViews() {
+  ['view-projects','view-boards','view-kanban'].forEach(id =>
+    document.getElementById(id).classList.add('hidden'));
+}
+function setNavActive(id) {
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function showProjects() {
+  hideAllViews();
+  document.getElementById('view-projects').classList.remove('hidden');
+  document.getElementById('topbar').innerHTML = `
+    <div class="topbar-title">Projects</div>
+    <div class="ml-auto flex items-center gap-8">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input placeholder="Search projects…" />
+      </div>
+    </div>`;
+  setNavActive('nav-projects');
+  renderProjects();
+  renderSidebarProjects();
+}
+
+function showBoards(projectId) {
+  currentProject = projects.find(p => p.id === projectId);
+  hideAllViews();
+  document.getElementById('view-boards').classList.remove('hidden');
+  document.getElementById('boards-project-name').textContent = currentProject.name;
+  document.getElementById('topbar').innerHTML = `
+    <div class="topbar-breadcrumb">
+      <span onclick="showProjects()">Projects</span>
+      <span class="sep">›</span>
+      <span class="current">${currentProject.name}</span>
+    </div>
+    <div class="ml-auto flex items-center gap-8">
+      <button class="btn btn-ghost btn-sm" onclick="openEditModal('project', '${currentProject.id}', '${currentProject.name}')">✏️ Rename</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-board')">+ New Board</button>
+    </div>`;
+  renderBoards(projectId);
+}
+
+function showKanban(boardId) {
+  const allBoards = Object.values(boards).flat();
+  currentBoard = allBoards.find(b => b.id === boardId);
+  hideAllViews();
+  document.getElementById('view-kanban').classList.remove('hidden');
+  document.getElementById('topbar').innerHTML = `
+    <div class="topbar-breadcrumb">
+      <span onclick="showProjects()">Projects</span>
+      <span class="sep">›</span>
+      <span onclick="showBoards('${currentProject.id}')">${currentProject.name}</span>
+      <span class="sep">›</span>
+      <span class="current">${currentBoard.name}</span>
+    </div>
+    <div class="ml-auto flex items-center gap-8">
+      <div class="avatar-group">
+        <div class="avatar avatar-sm" style="background:#6c63ff">AL</div>
+        <div class="avatar avatar-sm" style="background:#3ecf8e">JD</div>
+        <div class="avatar avatar-sm" style="background:#f59e0b">MK</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openEditModal('board','${boardId}','${currentBoard.name}')">✏️ Rename</button>
+      <button class="btn btn-primary btn-sm" onclick="addColumn('${boardId}')">+ Column</button>
+    </div>`;
+  renderKanban(boardId);
+}
+
+/* ──────────────────────────────────────────
+   RENDER PROJECTS
+─────────────────────────────────────────── */
+function renderProjects() {
+  const grid = document.getElementById('projects-grid');
+  grid.innerHTML = '';
+  projects.forEach(p => {
+    const card = document.createElement('div');
+    card.className = `project-card ${p.color}`;
+    card.innerHTML = `
+      <div class="project-card-header">
+        <div class="project-card-icon" style="background:var(--surface3)">${p.icon}</div>
+        <div class="project-card-meta">
+          <div class="project-card-name">${p.name}</div>
+          <div class="project-card-owner">Owned by you</div>
+        </div>
+        <button class="btn btn-ghost btn-icon btn-sm"
+          onclick="event.stopPropagation();showCtxMenu(event,'project','${p.id}','${p.name}')">⋯</button>
+      </div>
+      <div class="progress-bar" style="margin-bottom:12px">
+        <div class="progress-fill" style="width:${Math.round(Math.random()*70+20)}%"></div>
+      </div>
+      <div class="project-card-stats">
+        <div class="project-stat"><strong>${p.boards}</strong>Boards</div>
+        <div class="project-stat"><strong>${p.tasks}</strong>Tasks</div>
+        <div class="project-stat" style="margin-left:auto">
+          <div class="avatar-group">
+            <div class="avatar avatar-sm" style="background:#6c63ff">AL</div>
+            <div class="avatar avatar-sm" style="background:#3ecf8e">JD</div>
+          </div>
+        </div>
+      </div>`;
+    card.addEventListener('click', () => showBoards(p.id));
+    grid.appendChild(card);
+  });
+  // New project card
+  const add = document.createElement('div');
+  add.className = 'project-card project-card-new';
+  add.innerHTML = `<div class="plus">＋</div><div>New Project</div>`;
+  add.onclick = () => openModal('modal-new-project');
+  grid.appendChild(add);
+}
+
+function renderSidebarProjects() {
+  const el = document.getElementById('sidebar-projects-list');
+  el.innerHTML = projects.map((p, i) => `
+    <div class="sidebar-item" onclick="showBoards('${p.id}')">
+      <span class="sidebar-project-dot" style="background:${['#6c63ff','#3ecf8e','#f59e0b','#f472b6','#60a5fa'][i % 5]}"></span>
+      <span class="truncate">${p.name}</span>
+    </div>`).join('');
+}
+
+/* ──────────────────────────────────────────
+   RENDER BOARDS
+─────────────────────────────────────────── */
+function renderBoards(projectId) {
+  const grid = document.getElementById('boards-grid');
+  const list = boards[projectId] || [];
+  grid.innerHTML = '';
+  list.forEach((b, i) => {
+    const card = document.createElement('div');
+    card.className = 'board-card';
+    card.innerHTML = `
+      <div class="board-card-icon">${b.icon}</div>
+      <div class="board-card-name">${b.name}</div>
+      <div class="board-card-meta">${b.cols} columns · ${b.tasks} tasks</div>`;
+    card.addEventListener('click', () => showKanban(b.id));
+    grid.appendChild(card);
+  });
+  const add = document.createElement('div');
+  add.className = 'board-card board-card-new';
+  add.innerHTML = `<div style="font-size:24px;margin-bottom:6px">＋</div><div>New Board</div>`;
+  add.onclick = () => openModal('modal-new-board');
+  grid.appendChild(add);
+}
+
+/* ──────────────────────────────────────────
+   RENDER KANBAN
+─────────────────────────────────────────── */
+function renderKanban(boardId) {
+  const body = document.getElementById('kanban-body');
+  body.innerHTML = '';
+
+  // Initialize default data for this board if missing
+  if (!kanbanData[boardId]) {
+    kanbanData[boardId] = { cols: [
+      { id: boardId+'_c1', name:'To Do',       dot:'dot-purple', tasks:[] },
+      { id: boardId+'_c2', name:'In Progress', dot:'dot-blue',   tasks:[] },
+      { id: boardId+'_c3', name:'Done',        dot:'dot-green',  tasks:[] },
+    ]};
+  }
+
+  const data = kanbanData[boardId];
+  data.cols.forEach((col, ci) => {
+    const colEl = document.createElement('div');
+    colEl.className = 'kanban-col';
+    colEl.dataset.colId = col.id;
+
+    colEl.innerHTML = `
+      <div class="kanban-col-header">
+        <span class="col-dot ${col.dot}"></span>
+        <span class="kanban-col-title">${col.name}</span>
+        <span class="col-count">${col.tasks.length}</span>
+        <button class="btn btn-ghost btn-icon" style="padding:3px 5px;font-size:12px"
+          onclick="showCtxMenu(event,'col','${col.id}','${col.name}')">⋯</button>
+      </div>
+      <div class="kanban-cards" id="cards-${col.id}"></div>
+      <div class="kanban-add-card" onclick="openAddTask('${col.id}')">
+        + Add task
+      </div>`;
+
+    const cardsEl = colEl.querySelector(`#cards-${col.id}`);
+    col.tasks.forEach((task, ti) => {
+      const taskEl = document.createElement('div');
+      taskEl.className = 'task-card';
+      taskEl.draggable = true;
+      taskEl.dataset.taskId = task.id;
+      taskEl.innerHTML = `
+        <div class="task-title">${task.title}</div>
+        ${task.desc ? `<div class="task-desc">${task.desc}</div>` : ''}
+        <div class="task-footer">
+          <span class="task-priority ${task.prio}"></span>
+          <span class="task-id">${task.id.toUpperCase()}</span>
+          <div class="task-assignees">
+            <div class="avatar avatar-sm" style="background:${['#6c63ff','#3ecf8e','#f59e0b'][ti%3]}">
+              ${['AL','JD','MK'][ti%3]}</div>
+          </div>
+        </div>`;
+      taskEl.addEventListener('click', () => openTaskDetail(task, col, data.cols));
+      taskEl.addEventListener('dragstart', onDragStart);
+      taskEl.addEventListener('dragend',   onDragEnd);
+      cardsEl.appendChild(taskEl);
+    });
+
+    // drop zone
+    cardsEl.addEventListener('dragover',  onDragOver);
+    cardsEl.addEventListener('drop',      e => onDrop(e, col.id, boardId));
+    colEl.addEventListener('dragover',    onDragOver);
+    colEl.addEventListener('drop',        e => onDrop(e, col.id, boardId));
+
+    body.appendChild(colEl);
+  });
+
+  // Add column button
+  const addCol = document.createElement('div');
+  addCol.className = 'kanban-add-col';
+  addCol.innerHTML = `<div style="font-size:20px">＋</div><div>Add column</div>`;
+  addCol.onclick = () => addColumn(boardId);
+  body.appendChild(addCol);
+}
+
+/* ──────────────────────────────────────────
+   DRAG & DROP
+─────────────────────────────────────────── */
+let dragTaskId = null, dragColId = null;
+
+function onDragStart(e) {
+  dragTaskId = e.currentTarget.dataset.taskId;
+  // find source col
+  const allData = kanbanData[currentBoard.id];
+  allData.cols.forEach(c => {
+    if (c.tasks.find(t => t.id === dragTaskId)) dragColId = c.id;
+  });
+  e.currentTarget.style.opacity = '.4';
+}
+function onDragEnd(e) { e.currentTarget.style.opacity = '1'; }
+function onDragOver(e) { e.preventDefault(); }
+function onDrop(e, targetColId, boardId) {
+  e.preventDefault();
+  if (!dragTaskId || dragColId === targetColId) return;
+  const data = kanbanData[boardId];
+  const srcCol  = data.cols.find(c => c.id === dragColId);
+  const dstCol  = data.cols.find(c => c.id === targetColId);
+  const taskIdx = srcCol.tasks.findIndex(t => t.id === dragTaskId);
+  const [task]  = srcCol.tasks.splice(taskIdx, 1);
+  dstCol.tasks.push(task);
+  dragTaskId = null; dragColId = null;
+  renderKanban(boardId);
+  showToast(`Moved to "${dstCol.name}"`, '↔️');
+}
+
+/* ──────────────────────────────────────────
+   ADD TASK (inline)
+─────────────────────────────────────────── */
+function openAddTask(colId) {
+  // Remove any existing inline forms
+  document.querySelectorAll('.inline-form').forEach(f => f.remove());
+
+  const cardsEl = document.getElementById(`cards-${colId}`);
+  const form = document.createElement('div');
+  form.className = 'inline-form';
+  form.innerHTML = `
+    <input placeholder="Task title…" id="inline-task-input" />
+    <div class="inline-form-actions">
+      <button class="btn btn-primary btn-sm" onclick="confirmAddTask('${colId}')">Add</button>
+      <button class="btn btn-ghost btn-sm" onclick="this.closest('.inline-form').remove()">Cancel</button>
+    </div>`;
+  cardsEl.appendChild(form);
+  form.querySelector('input').focus();
+  form.querySelector('input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmAddTask(colId);
+    if (e.key === 'Escape') form.remove();
+  });
+}
+
+function confirmAddTask(colId) {
+  const input = document.getElementById('inline-task-input');
+  const title = input?.value.trim();
+  if (!title) return;
+  const boardId = currentBoard.id;
+  const col = kanbanData[boardId].cols.find(c => c.id === colId);
+  const newTask = {
+    id: 't' + Date.now().toString(36),
+    title,
+    desc: '',
+    prio: 'prio-low',
+  };
+  col.tasks.push(newTask);
+  renderKanban(boardId);
+  showToast('Task created', '✅');
+}
+
+/* ──────────────────────────────────────────
+   TASK DETAIL
+─────────────────────────────────────────── */
+function openTaskDetail(task, col, allCols) {
+  document.getElementById('td-task-id').textContent = task.id.toUpperCase();
+  document.getElementById('td-title').value   = task.title;
+  document.getElementById('td-desc').value    = task.desc || '';
+  const colSel = document.getElementById('td-col-select');
+  colSel.innerHTML = allCols.map(c => `
+    <div class="col-option ${c.id === col.id ? 'selected' : ''}" onclick="selectColOption(this)">
+      <span class="col-dot ${c.dot}" style="width:7px;height:7px;border-radius:99px;flex-shrink:0"></span>
+      ${c.name}
+    </div>`).join('');
+  openModal('modal-task-detail');
+}
+function selectColOption(el) {
+  document.querySelectorAll('.col-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+/* ──────────────────────────────────────────
+   ADD COLUMN
+─────────────────────────────────────────── */
+function addColumn(boardId) {
+  const name = prompt('Column name:');
+  if (!name) return;
+  if (!kanbanData[boardId]) kanbanData[boardId] = { cols: [] };
+  const dots = ['dot-purple','dot-blue','dot-yellow','dot-green','dot-pink'];
+  kanbanData[boardId].cols.push({
+    id: boardId + '_c' + Date.now().toString(36),
+    name,
+    dot: dots[kanbanData[boardId].cols.length % dots.length],
+    tasks: [],
+  });
+  renderKanban(boardId);
+  showToast(`Column "${name}" added`, '✅');
+}
+
+/* ──────────────────────────────────────────
+   CREATE PROJECT / BOARD
+─────────────────────────────────────────── */
+function createProject() {
+  const name = document.getElementById('new-project-name').value.trim();
+  if (name.length < 3) { showToast('Name must be at least 3 characters', '⚠️'); return; }
+  const newP = {
+    id:     'p' + Date.now().toString(36),
+    name,
+    boards: 0,
+    tasks:  0,
+    color:  PROJECT_COLORS[projects.length % PROJECT_COLORS.length],
+    icon:   PROJECT_ICONS[projects.length % PROJECT_ICONS.length],
+  };
+  projects.push(newP);
+  boards[newP.id] = [];
+  closeModal('modal-new-project');
+  document.getElementById('new-project-name').value = '';
+  renderProjects();
+  renderSidebarProjects();
+  showToast(`Project "${name}" created`, '🎉');
+}
+
+function createBoard() {
+  const name = document.getElementById('new-board-name').value.trim();
+  if (!name) return;
+  const boardList = boards[currentProject.id] || [];
+  const newB = {
+    id:   'b' + Date.now().toString(36),
+    name,
+    cols: 3,
+    tasks: 0,
+    icon: BOARD_ICONS[boardList.length % BOARD_ICONS.length],
+  };
+  boardList.push(newB);
+  boards[currentProject.id] = boardList;
+  currentProject.boards++;
+  closeModal('modal-new-board');
+  document.getElementById('new-board-name').value = '';
+  renderBoards(currentProject.id);
+  showToast(`Board "${name}" created`, '📋');
+}
+
+/* ──────────────────────────────────────────
+   EDIT / RENAME
+─────────────────────────────────────────── */
+let editTarget = null;
+function openEditModal(type, id, currentName) {
+  editTarget = { type, id };
+  document.getElementById('modal-edit-title').textContent = type === 'project' ? 'Rename Project' : 'Rename Board';
+  document.getElementById('modal-edit-input').value = currentName;
+  openModal('modal-edit');
+}
+function saveEdit() {
+  const newName = document.getElementById('modal-edit-input').value.trim();
+  if (!newName) return;
+  if (editTarget.type === 'project') {
+    const p = projects.find(x => x.id === editTarget.id);
+    if (p) { p.name = newName; renderProjects(); renderSidebarProjects(); }
+    if (currentProject && currentProject.id === editTarget.id) {
+      currentProject.name = newName;
+      showBoards(currentProject.id);
+    }
+  } else if (editTarget.type === 'board') {
+    const allBoards = Object.values(boards).flat();
+    const b = allBoards.find(x => x.id === editTarget.id);
+    if (b) { b.name = newName; renderBoards(currentProject.id); }
+  }
+  closeModal('modal-edit');
+  showToast('Renamed successfully', '✅');
+}
+
+/* ──────────────────────────────────────────
+   CONTEXT MENU
+─────────────────────────────────────────── */
+let ctxTarget = null;
+function showCtxMenu(e, type, id, name) {
+  e.stopPropagation();
+  ctxTarget = { type, id, name };
+  const menu = document.getElementById('ctx-menu');
+  menu.classList.remove('hidden');
+  menu.style.left = e.clientX + 'px';
+  menu.style.top  = e.clientY + 'px';
+}
+function ctxEdit() {
+  hideCtxMenu();
+  openEditModal(ctxTarget.type, ctxTarget.id, ctxTarget.name);
+}
+function ctxDelete() {
+  hideCtxMenu();
+  if (ctxTarget.type === 'project') {
+    projects = projects.filter(p => p.id !== ctxTarget.id);
+    delete boards[ctxTarget.id];
+    renderProjects();
+    renderSidebarProjects();
+    showToast(`Project deleted`, '🗑');
+  } else if (ctxTarget.type === 'board') {
+    Object.keys(boards).forEach(pid => {
+      boards[pid] = boards[pid].filter(b => b.id !== ctxTarget.id);
+    });
+    if (currentProject) renderBoards(currentProject.id);
+    showToast(`Board deleted`, '🗑');
+  } else if (ctxTarget.type === 'col') {
+    const bId = currentBoard.id;
+    kanbanData[bId].cols = kanbanData[bId].cols.filter(c => c.id !== ctxTarget.id);
+    renderKanban(bId);
+    showToast(`Column deleted`, '🗑');
+  }
+}
+function hideCtxMenu() { document.getElementById('ctx-menu').classList.add('hidden'); }
+document.addEventListener('click', hideCtxMenu);
+
+/* ──────────────────────────────────────────
+   MODALS
+─────────────────────────────────────────── */
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.add('hidden');
+  });
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => m.classList.add('hidden'));
+    document.querySelectorAll('.inline-form').forEach(f => f.remove());
+  }
+});
+
+/* ──────────────────────────────────────────
+   TOASTS
+─────────────────────────────────────────── */
+function showToast(msg, icon = '✅', type = 'success') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+</script>
+</body>
+</html>
