@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
+import { ProjectRole } from "@generated/prisma";
+import { getProjectMember, hasMinRole } from "@/lib/project-auth";
 import type { Task } from "@generated/prisma";
 
 type UpdateTaskInput = {
@@ -14,19 +16,23 @@ type UpdateTaskInput = {
 export const updateTask = async (input: UpdateTaskInput): Promise<Task> => {
     const existing = await prisma.task.findUnique({
         where: { id: input.id },
-        include: { column: { include: { board: { include: { project: true } } } } },
+        include: { column: { include: { board: true } } },
     });
-    if (!existing || existing.column.board.project.ownerId !== input.requestingUserId) {
-        throw new AppError(403, "Task not found or access denied");
+    if (!existing) throw new AppError(404, "Task not found");
+
+    const projectId = existing.column.board.projectId;
+    const member = await getProjectMember(projectId, input.requestingUserId);
+    if (!member || !hasMinRole(member, ProjectRole.MEMBER)) {
+        throw new AppError(403, "Project not found or insufficient permissions");
     }
 
     if (input.columnId && input.columnId !== existing.columnId) {
         const newColumn = await prisma.column.findUnique({
             where: { id: input.columnId },
-            include: { board: { include: { project: true } } },
+            include: { board: true },
         });
-        if (!newColumn || newColumn.board.project.ownerId !== input.requestingUserId) {
-            throw new AppError(403, "Target column not found or access denied");
+        if (!newColumn || newColumn.board.projectId !== projectId) {
+            throw new AppError(403, "Target column must belong to the same project");
         }
     }
 

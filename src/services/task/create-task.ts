@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
+import { ProjectRole } from "@generated/prisma";
+import { getProjectMember, hasMinRole } from "@/lib/project-auth";
 import type { Task } from "@generated/prisma";
 
 type CreateTaskInput = {
@@ -12,10 +14,13 @@ type CreateTaskInput = {
 export const createTask = async (input: CreateTaskInput): Promise<Task> => {
     const column = await prisma.column.findUnique({
         where: { id: input.columnId },
-        include: { board: { include: { project: true } } },
+        include: { board: true },
     });
-    if (!column || column.board.project.ownerId !== input.requestingUserId) {
-        throw new AppError(403, "Column not found or access denied");
+    if (!column) throw new AppError(404, "Column not found");
+
+    const member = await getProjectMember(column.board.projectId, input.requestingUserId);
+    if (!member || !hasMinRole(member, ProjectRole.MEMBER)) {
+        throw new AppError(403, "Project not found or insufficient permissions");
     }
 
     const aggregate = await prisma.task.aggregate({
@@ -30,6 +35,7 @@ export const createTask = async (input: CreateTaskInput): Promise<Task> => {
             description: input.description,
             order,
             columnId: input.columnId,
+            creatorId: input.requestingUserId,
         },
     });
 };

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
+import { getProjectMember } from "@/lib/project-auth";
 import type { Board } from "@generated/prisma";
 
 type GetBoardListInput = {
@@ -8,8 +9,8 @@ type GetBoardListInput = {
 };
 
 export const getBoardList = async (input: GetBoardListInput): Promise<Board[]> => {
-    const project = await prisma.project.findUnique({ where: { id: input.projectId } });
-    if (!project || project.ownerId !== input.requestingUserId) {
+    const member = await getProjectMember(input.projectId, input.requestingUserId);
+    if (!member) {
         throw new AppError(403, "Project not found or access denied");
     }
 

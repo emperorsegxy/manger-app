@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
+import { getProjectMember } from "@/lib/project-auth";
 import type { Task } from "@generated/prisma";
 
 type GetTaskListInput = {
@@ -10,11 +11,12 @@ type GetTaskListInput = {
 export const getTaskList = async (input: GetTaskListInput): Promise<Task[]> => {
     const column = await prisma.column.findUnique({
         where: { id: input.columnId },
-        include: { board: { include: { project: true } } },
+        include: { board: true },
     });
-    if (!column || column.board.project.ownerId !== input.requestingUserId) {
-        throw new AppError(403, "Column not found or access denied");
-    }
+    if (!column) throw new AppError(404, "Column not found");
+
+    const member = await getProjectMember(column.board.projectId, input.requestingUserId);
+    if (!member) throw new AppError(403, "Project not found or access denied");
 
     return prisma.task.findMany({
         where: { columnId: input.columnId },

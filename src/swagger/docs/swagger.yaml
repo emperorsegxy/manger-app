@@ -1,26 +1,68 @@
 openapi: 3.0.0
 info:
-  title: Manager Kanban API
+  title: Manger Kanban API
   version: 1.0.0
+  description: >
+    REST API for a Kanban project management app.
+    All protected endpoints require a Bearer JWT token obtained from `POST /user/authenticate`.
 
 servers:
-  - url: http://localhost:43211
+  - url: http://localhost:3000
 
 security:
   - BearerAuth: []
 
+tags:
+  - name: User
+    description: Account management and authentication
+  - name: Project
+    description: Project CRUD and membership management
+  - name: Board
+    description: Board management within a project
+  - name: Task
+    description: Task management within a board column
+
+# ─── Paths ───────────────────────────────────────────────────────────────────
+
 paths:
+
+  # ── User ────────────────────────────────────────────────────────────────────
+
+  /user/list:
+    get:
+      summary: List all users
+      tags: [User]
+      security: []
+      responses:
+        "200":
+          description: Successfully retrieved users
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+
   /user/register:
     post:
-      summary: Creates a new user
-      tags:
-        - User
+      summary: Register a new user account
+      tags: [User]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [email, password, firstName, lastName]
               properties:
                 email:
                   type: string
@@ -35,68 +77,68 @@ paths:
                 imgUrl:
                   type: string
                   nullable: true
-              required:
-                - email
-                - password
-                - firstName
-                - lastName
       responses:
         "201":
-          description: User created. A verification email has been sent to the provided address.
+          description: User created. A verification email has been sent.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  user:
-                    $ref: "#/components/schemas/User"
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
         "400":
-          description: A user with that email already exists
+          $ref: "#/components/responses/BadRequest"
 
   /user/authenticate:
     post:
-      summary: Authenticates user into the application
-      tags:
-        - User
+      summary: Authenticate and receive a JWT access token
+      tags: [User]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [email, password]
               properties:
                 email:
                   type: string
                   format: email
                 password:
                   type: string
-                  minLength: 6
-              required:
-                - email
-                - password
       responses:
         "200":
           description: Authenticated successfully
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: object
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
                     properties:
-                      accessToken:
-                        type: string
+                      data:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
         "400":
-          description: Invalid credentials, or email not verified (a new verification link is sent in the latter case)
+          description: Invalid credentials, or email not verified (a new verification link is re-sent in the latter case)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /user/verify-email:
     get:
-      summary: Verifies a user's email address
-      tags:
-        - User
+      summary: Verify email address using token from the verification email
+      tags: [User]
       security: []
       parameters:
         - in: query
@@ -104,18 +146,16 @@ paths:
           required: true
           schema:
             type: string
-          description: The verification token sent to the user's email
       responses:
         "200":
-          description: Email verified successfully
+          $ref: "#/components/responses/MessageOnly"
         "400":
-          description: Invalid or expired verification token
+          $ref: "#/components/responses/BadRequest"
 
   /user/forgot-password:
     post:
-      summary: Requests a password reset link
-      tags:
-        - User
+      summary: Request a password reset link
+      tags: [User]
       security: []
       requestBody:
         required: true
@@ -123,21 +163,19 @@ paths:
           application/json:
             schema:
               type: object
+              required: [email]
               properties:
                 email:
                   type: string
                   format: email
-              required:
-                - email
       responses:
         "200":
-          description: If that email exists, a reset link has been sent
+          $ref: "#/components/responses/MessageOnly"
 
   /user/reset-password:
     post:
-      summary: Resets the user's password using a token
-      tags:
-        - User
+      summary: Reset password using a token from the reset email
+      tags: [User]
       security: []
       requestBody:
         required: true
@@ -145,152 +183,745 @@ paths:
           application/json:
             schema:
               type: object
+              required: [token, password]
               properties:
                 token:
                   type: string
                 password:
                   type: string
                   minLength: 8
-              required:
-                - token
-                - password
       responses:
         "200":
-          description: Password has been reset successfully
+          $ref: "#/components/responses/MessageOnly"
         "400":
-          description: Invalid or expired reset token
+          $ref: "#/components/responses/BadRequest"
+
+  /user/delete:
+    delete:
+      summary: Delete the authenticated user's account and all owned data
+      tags: [User]
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ── Project ──────────────────────────────────────────────────────────────────
 
   /project/list:
     get:
-      summary: Gets user's projects list
-      tags:
-        - Project
+      summary: List all projects the user owns or is a member of
+      tags: [Project]
       responses:
-        200:
-          description: Successfully fetched projects
+        "200":
+          description: Successfully retrieved projects
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /project/create:
     post:
-      summary: Creates a new project
-      tags:
-        - Project
+      summary: Create a new project
+      description: The authenticated user becomes the project owner and is automatically added as a member with the OWNER role.
+      tags: [Project]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [name]
               properties:
                 name:
                   type: string
-                  minLength: 6
-              required:
-                - name
       responses:
-        200:
-          description: Successfully fetched projects
+        "201":
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /project/update:
     patch:
-      summary: Update given project
-      tags:
-        - Project
+      summary: Update a project's name (owner only)
+      tags: [Project]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [id, name]
               properties:
                 id:
                   type: string
-                  required: true
+                  format: uuid
                 name:
                   type: string
-                  minLength: 6
-              required:
-                - name
       responses:
-        200:
-          description: Successfully fetched projects
+        "200":
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          project:
+                            $ref: "#/components/schemas/Project"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /project/delete:
+    delete:
+      summary: Delete a project and all its boards, columns, and tasks (owner only)
+      tags: [Project]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /project/invite:
+    post:
+      summary: Invite a user to the project by email (owner or admin only)
+      description: >
+        Sends an invitation email with a 7-day token. Re-inviting the same email overwrites the previous invitation and updates the role.
+        The invited role defaults to MEMBER if not specified. OWNER role cannot be assigned via invitation.
+      tags: [Project]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, email]
+              properties:
+                projectId:
+                  type: string
+                  format: uuid
+                email:
+                  type: string
+                  format: email
+                role:
+                  $ref: "#/components/schemas/InvitableRole"
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /project/accept-invite:
+    get:
+      summary: Accept a project invitation
+      description: >
+        The authenticated user's email must match the invitation's target email.
+        If the user does not have an account yet, they must register first.
+      tags: [Project]
+      parameters:
+        - in: query
+          name: token
+          required: true
+          schema:
+            type: string
+          description: The plain invitation token from the email link
+      responses:
+        "201":
+          description: Successfully joined project
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          membership:
+                            $ref: "#/components/schemas/ProjectMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /project/remove-member:
+    delete:
+      summary: Remove a member from a project (owner or admin only)
+      description: >
+        Owners can remove any member except themselves.
+        Admins can only remove members with the MEMBER or VIEWER role.
+      tags: [Project]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, userId]
+              properties:
+                projectId:
+                  type: string
+                  format: uuid
+                userId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /project/update-member-role:
+    patch:
+      summary: Change a member's role (owner only)
+      description: The OWNER role cannot be assigned or changed via this endpoint.
+      tags: [Project]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, userId, role]
+              properties:
+                projectId:
+                  type: string
+                  format: uuid
+                userId:
+                  type: string
+                  format: uuid
+                role:
+                  $ref: "#/components/schemas/InvitableRole"
+      responses:
+        "200":
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          membership:
+                            $ref: "#/components/schemas/ProjectMember"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── Board ────────────────────────────────────────────────────────────────────
 
   /board/list:
     get:
-      summary: Gets boards for a project
-      tags:
-        - Board
+      summary: List all boards in a project
+      description: Accessible by any project member including VIEWERs.
+      tags: [Board]
       parameters:
         - in: query
           name: projectId
           required: true
           schema:
             type: string
-          description: ID of the project to fetch boards for
+            format: uuid
       responses:
         "200":
-          description: Successfully fetched boards
+          description: Successfully retrieved boards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Board"
         "400":
-          description: Missing projectId query param
+          $ref: "#/components/responses/BadRequest"
         "403":
-          description: Project not found or access denied
+          $ref: "#/components/responses/Forbidden"
 
   /board/create:
     post:
-      summary: Creates a new board under a project
-      tags:
-        - Board
+      summary: Create a new board in a project (owner or admin only)
+      tags: [Board]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [name, projectId]
               properties:
                 name:
                   type: string
                 projectId:
                   type: string
-              required:
-                - name
-                - projectId
+                  format: uuid
       responses:
         "201":
-          description: Successfully created a new board
+          description: Board created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          board:
+                            $ref: "#/components/schemas/Board"
         "403":
-          description: Project not found or access denied
+          $ref: "#/components/responses/Forbidden"
 
   /board/update:
     patch:
-      summary: Updates an existing board
-      tags:
-        - Board
+      summary: Update a board's name (owner or admin only)
+      tags: [Board]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required: [id, name]
               properties:
                 id:
                   type: string
+                  format: uuid
                 name:
                   type: string
-              required:
-                - id
-                - name
       responses:
         "200":
-          description: Successfully updated board
+          description: Board updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          board:
+                            $ref: "#/components/schemas/Board"
         "403":
-          description: Board not found or access denied
+          $ref: "#/components/responses/Forbidden"
+
+  /board/delete:
+    delete:
+      summary: Delete a board and all its columns and tasks (owner or admin only)
+      tags: [Board]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  # ── Task ─────────────────────────────────────────────────────────────────────
+
+  /task/list:
+    get:
+      summary: List all tasks in a column
+      description: Accessible by any project member including VIEWERs. Tasks are returned ordered by `order` ascending.
+      tags: [Task]
+      parameters:
+        - in: query
+          name: columnId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved tasks
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /task/create:
+    post:
+      summary: Create a task in a column (member, admin, or owner)
+      description: >
+        `order` is auto-assigned as the next available position in the column.
+        The authenticated user is recorded as the task creator.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, columnId]
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                columnId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          task:
+                            $ref: "#/components/schemas/Task"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /task/update:
+    patch:
+      summary: Update a task (member, admin, or owner)
+      description: >
+        All fields are optional except `id`. Providing a new `columnId` moves the task to that column —
+        the target column must belong to the same project. Providing a new `order` reorders the task within its column.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                title:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                order:
+                  type: integer
+                  minimum: 1
+                columnId:
+                  type: string
+                  format: uuid
+                  description: Move task to this column (must be in the same project)
+      responses:
+        "200":
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          task:
+                            $ref: "#/components/schemas/Task"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /task/delete:
+    delete:
+      summary: Delete a task
+      description: >
+        Owners and admins can delete any task.
+        Members can only delete tasks they created.
+        VIEWERs cannot delete tasks.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /task/assign:
+    post:
+      summary: Assign a project member to a task
+      description: >
+        The assignee must be an existing member of the project.
+        Requires at least MEMBER role.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId, userId]
+              properties:
+                taskId:
+                  type: string
+                  format: uuid
+                userId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: User assigned to task
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          assignment:
+                            $ref: "#/components/schemas/TaskAssignee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /task/unassign:
+    delete:
+      summary: Remove a user's assignment from a task
+      description: Requires at least MEMBER role in the project.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId, userId]
+              properties:
+                taskId:
+                  type: string
+                  format: uuid
+                userId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+# ─── Components ───────────────────────────────────────────────────────────────
 
 components:
+
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  # ── Reusable Responses ───────────────────────────────────────────────────────
+
+  responses:
+    MessageOnly:
+      description: Operation successful
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/SuccessResponse"
+    BadRequest:
+      description: Validation error or bad input
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated but insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  # ── Schemas ──────────────────────────────────────────────────────────────────
+
   schemas:
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+        data:
+          type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        statusCode:
+          type: integer
+          example: 400
+        message:
+          type: string
+        errorCode:
+          type: string
+          enum:
+            - SYSTEM_ERR
+            - NOT_FOUND
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - VALIDATION_ERR
+            - CONFLICT
+            - BAD_REQUEST
+            - RATE_LIMITED
+            - SERVICE_UNAVAILABLE
+        details:
+          description: Optional additional error context
+        timestamp:
+          type: string
+          format: date-time
+
+    ProjectRole:
+      type: string
+      enum: [OWNER, ADMIN, MEMBER, VIEWER]
+
+    InvitableRole:
+      type: string
+      enum: [ADMIN, MEMBER, VIEWER]
+      description: Roles that can be assigned via invitation or role update. OWNER cannot be assigned.
+
     User:
       type: object
       properties:
@@ -312,3 +943,81 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProjectMember:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        role:
+          $ref: "#/components/schemas/ProjectRole"
+        joinedAt:
+          type: string
+          format: date-time
+
+    Board:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        order:
+          type: integer
+        columnId:
+          type: string
+          format: uuid
+        creatorId:
+          type: string
+          format: uuid
+
+    TaskAssignee:
+      type: object
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
