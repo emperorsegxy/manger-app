@@ -20,7 +20,7 @@ tags:
   - name: Board
     description: Board management within a project
   - name: Task
-    description: Task management within a board column
+    description: Task management within a board column, including comments and mentions
 
 # ─── Paths ───────────────────────────────────────────────────────────────────
 
@@ -813,6 +813,119 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /task/comment/list:
+    get:
+      summary: List all comments on a task
+      description: Accessible by any project member including VIEWERs. Returns comments ordered by `createdAt` ascending, each with author info and mentioned users.
+      tags: [Task]
+      parameters:
+        - in: query
+          name: taskId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved comments
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/TaskComment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /task/comment/create:
+    post:
+      summary: Add a comment to a task
+      description: >
+        Any project member (MEMBER, ADMIN, or OWNER) can comment.
+        Optionally tag other project members via `mentionedUserIds` — each id must belong to a project member.
+        Tagged users are recorded and can later be used for notifications.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [taskId, content]
+              properties:
+                taskId:
+                  type: string
+                  format: uuid
+                content:
+                  type: string
+                  minLength: 1
+                mentionedUserIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                  description: IDs of project members to tag in this comment
+      responses:
+        "201":
+          description: Comment created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          comment:
+                            $ref: "#/components/schemas/TaskComment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /task/comment/delete:
+    delete:
+      summary: Delete a comment
+      description: >
+        The comment author can always delete their own comment.
+        Project owners and admins can delete any comment on tasks within their project.
+        VIEWERs cannot delete comments.
+      tags: [Task]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 # ─── Components ───────────────────────────────────────────────────────────────
 
 components:
@@ -1021,3 +1134,60 @@ components:
         userId:
           type: string
           format: uuid
+
+    UserSummary:
+      type: object
+      description: Minimal user info embedded in comments and mentions
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        imgUrl:
+          type: string
+          nullable: true
+
+    TaskCommentMention:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        commentId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        user:
+          $ref: "#/components/schemas/UserSummary"
+
+    TaskComment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        taskId:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+        author:
+          $ref: "#/components/schemas/UserSummary"
+        mentions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskCommentMention"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time

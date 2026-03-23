@@ -93,6 +93,7 @@ export const createErrorResponse = ({
         ...(details !== undefined && {details}),
         timestamp: timestamp(),
     };
+    console.log(details, 'details')
 
     return res.status(statusCode).json(payload);
 }

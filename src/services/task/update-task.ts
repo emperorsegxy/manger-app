@@ -31,6 +31,16 @@ export const updateTask = async (input: UpdateTaskInput): Promise<Task> => {
             where: { id: input.columnId },
             include: { board: true },
         });
+
+        // get all the tasks in this column, to determine the new order for the newly added task
+
+        const tasks = await prisma.task.aggregate({ 
+            where: { columnId: input.columnId },
+             _max: { order: true }
+        })
+
+        input.order = (tasks._max?.order ?? 0) + 1
+
         if (!newColumn || newColumn.board.projectId !== projectId) {
             throw new AppError(403, "Target column must belong to the same project");
         }

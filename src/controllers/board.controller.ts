@@ -26,6 +26,7 @@ export const createBoardController = async (req: Request, res: Response) => {
         return createSuccessResponse({ res, statusCode: 201, message: "Successfully created a new board", data: { board } });
     } catch (err) {
         if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        console.log({err})
         return createErrorResponse({ res });
     }
 };

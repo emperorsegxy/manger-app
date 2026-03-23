@@ -9,6 +9,7 @@ import { acceptInvitation } from "@services/project/accept-invitation";
 import { removeMember } from "@services/project/remove-member";
 import { updateMemberRole } from "@services/project/update-member-role";
 import { createSuccessResponse, createErrorResponse, statusToErrorCode, ErrorCode } from "@/lib/create-api-response";
+import {getProjectMembers} from "@services/project/get-project-members";
 
 export const getProjectListController = async (req: Request, res: Response) => {
     try {
@@ -66,7 +67,7 @@ export const acceptInvitationController = async (req: Request, res: Response) =>
         if (!token || typeof token !== "string") {
             return createErrorResponse({ res, statusCode: 400, message: "token query param is required", errorCode: ErrorCode.BadRequest });
         }
-        const membership = await acceptInvitation({ token, requestingUserId: req.user!.id });
+        const membership = await acceptInvitation({ token });
         return createSuccessResponse({ res, statusCode: 201, message: "Successfully joined project", data: { membership } });
     } catch (err) {
         if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
@@ -93,3 +94,13 @@ export const updateMemberRoleController = async (req: Request, res: Response) =>
         return createErrorResponse({ res });
     }
 };
+
+export const getProjectMembersController = async (req: Request, res: Response) => {
+    try {
+        const members = await getProjectMembers(req.query.projectId as string);
+        return createSuccessResponse({ res, message: "Returned project members", data: { members } });
+    } catch (err) {
+        if (err instanceof AppError) return createErrorResponse({ res });
+        return createErrorResponse({ res });
+    }
+}

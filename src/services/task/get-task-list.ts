@@ -1,14 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
 import { getProjectMember } from "@/lib/project-auth";
-import type { Task } from "@generated/prisma";
+import { Prisma } from "@generated/prisma";
 
 type GetTaskListInput = {
     columnId: string;
     requestingUserId: string;
 };
 
-export const getTaskList = async (input: GetTaskListInput): Promise<Task[]> => {
+const taskWithAssignees = Prisma.validator<Prisma.TaskDefaultArgs>()({
+    include: { assignees: { select: { userId: true } } },
+});
+
+export type TaskWithAssignees = Prisma.TaskGetPayload<typeof taskWithAssignees>;
+
+export const getTaskList = async (input: GetTaskListInput): Promise<TaskWithAssignees[]> => {
     const column = await prisma.column.findUnique({
         where: { id: input.columnId },
         include: { board: true },
@@ -20,6 +26,7 @@ export const getTaskList = async (input: GetTaskListInput): Promise<Task[]> => {
 
     return prisma.task.findMany({
         where: { columnId: input.columnId },
-        orderBy: { order: "asc" },
+        orderBy: { order: "desc" },
+        include: { assignees: { select: { userId: true } } },
     });
 };

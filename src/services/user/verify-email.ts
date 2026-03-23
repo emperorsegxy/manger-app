@@ -10,7 +10,6 @@ export const verifyEmail = async (input: VerifyEmailInput): Promise<void> => {
     const hash = crypto.createHash("sha256").update(input.token).digest("hex");
 
     const record = await prisma.emailVerificationToken.findUnique({ where: { token: hash } });
-    console.log(record, 'record', hash)
     if (!record || record.expiresAt < new Date()) {
         throw new AppError(400, "Invalid or expired verification token");
     }

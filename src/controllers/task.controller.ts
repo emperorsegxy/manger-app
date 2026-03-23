@@ -6,6 +6,9 @@ import { updateTask } from "@services/task/update-task";
 import { deleteTask } from "@services/task/delete-task";
 import { assignTask } from "@services/task/assign-task";
 import { unassignTask } from "@services/task/unassign-task";
+import { getComments } from "@services/task/comment/get-comments";
+import { createComment } from "@services/task/comment/create-comment";
+import { deleteComment } from "@services/task/comment/delete-comment";
 import { createSuccessResponse, createErrorResponse, statusToErrorCode, ErrorCode } from "@/lib/create-api-response";
 
 export const getTaskListController = async (req: Request, res: Response) => {
@@ -66,6 +69,40 @@ export const unassignTaskController = async (req: Request, res: Response) => {
     try {
         await unassignTask({ ...req.body, requestingUserId: req.user!.id });
         return createSuccessResponse({ res, message: "User unassigned from task" });
+    } catch (err) {
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
+    }
+};
+
+export const getCommentsController = async (req: Request, res: Response) => {
+    try {
+        const { taskId } = req.query;
+        if (!taskId || typeof taskId !== "string") {
+            return createErrorResponse({ res, statusCode: 400, message: "taskId query param is required", errorCode: ErrorCode.BadRequest });
+        }
+        const items = await getComments({ taskId, requestingUserId: req.user!.id });
+        return createSuccessResponse({ res, message: "Successfully retrieved comments", data: { items } });
+    } catch (err) {
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
+    }
+};
+
+export const createCommentController = async (req: Request, res: Response) => {
+    try {
+        const comment = await createComment({ ...req.body, requestingUserId: req.user!.id });
+        return createSuccessResponse({ res, statusCode: 201, message: "Comment added successfully", data: { comment } });
+    } catch (err) {
+        if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
+        return createErrorResponse({ res });
+    }
+};
+
+export const deleteCommentController = async (req: Request, res: Response) => {
+    try {
+        await deleteComment({ id: req.body.id, requestingUserId: req.user!.id });
+        return createSuccessResponse({ res, message: "Comment deleted successfully" });
     } catch (err) {
         if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
         return createErrorResponse({ res });

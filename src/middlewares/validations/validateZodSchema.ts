@@ -7,7 +7,6 @@ export const validateZodSchema = (zodSchema: any) => (req: Request, res: Respons
         })
     }
     const result = zodSchema.safeParse(req.body);
-    console.log(result, req.body);
     if (!result.success) {
         return res.status(400).json({
             errors: result.error.flatten(),

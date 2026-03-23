@@ -7,6 +7,7 @@ import userRouter from "@/routes/user";
 import projectRouter from "@/routes/project"
 import boardRouter from "@/routes/board"
 import taskRouter from "@/routes/task"
+import columnRouter from "@/routes/column"
 import {requestLogger} from "@/loggers/request-logger";
 import path from "node:path";
 import fs from "node:fs";
@@ -33,6 +34,7 @@ app.use('/user', userRouter)
 app.use('/project', projectRouter)
 app.use('/board', boardRouter)
 app.use('/task', taskRouter)
+app.use('/column', columnRouter)
 
 const port = process.env.PORT || 3000;
 

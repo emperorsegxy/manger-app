@@ -8,6 +8,7 @@ import { resetPassword } from "@services/user/reset-password";
 import { verifyEmail } from "@services/user/verify-email";
 import { deleteUser } from "@services/user/delete-user";
 import { createSuccessResponse, createErrorResponse, statusToErrorCode } from "@/lib/create-api-response";
+import { logger } from "@/loggers";
 
 export const getAllUsersController = async (req: Request, res: Response) => {
     try {
@@ -30,12 +31,13 @@ export const createUserController = async (req: Request, res: Response) => {
 };
 
 export const authenticateUserController = async (req: Request, res: Response) => {
+    logger.info('get in jor')
     try {
         const data = await authenticateUser(req.body);
         return createSuccessResponse({ res, message: "Successfully authenticated", data });
     } catch (err) {
         if (err instanceof AppError) return createErrorResponse({ res, message: err.message, statusCode: err.statusCode, errorCode: statusToErrorCode(err.statusCode) });
-        return createErrorResponse({ res });
+        return createErrorResponse({ res, details: err });
     }
 };
 

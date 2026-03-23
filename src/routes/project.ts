@@ -10,7 +10,7 @@ import {
     inviteMemberController,
     acceptInvitationController,
     removeMemberController,
-    updateMemberRoleController,
+    updateMemberRoleController, getProjectMembersController,
 } from "@/controllers/project.controller";
 import { ProjectCreateInputObjectZodSchema, ProjectUncheckedCreateInputObjectZodSchema, ProjectMemberUncheckedCreateInputObjectZodSchema } from "@generated/zod/schemas";
 
@@ -22,8 +22,9 @@ router.patch("/update", authentication, validateZodSchema(ProjectCreateInputObje
 router.delete("/delete", authentication, validateZodSchema(ProjectUncheckedCreateInputObjectZodSchema.pick({ id: true }).required()), deleteProjectController);
 
 router.post("/invite", authentication, validateZodSchema(ProjectMemberUncheckedCreateInputObjectZodSchema.pick({ projectId: true, role: true }).extend({ email: z.string().email() }).partial({ role: true })), inviteMemberController);
-router.get("/accept-invite", authentication, acceptInvitationController);
+router.get("/accept-invite", acceptInvitationController);
 router.delete("/remove-member", authentication, validateZodSchema(ProjectMemberUncheckedCreateInputObjectZodSchema.pick({ projectId: true, userId: true })), removeMemberController);
 router.patch("/update-member-role", authentication, validateZodSchema(ProjectMemberUncheckedCreateInputObjectZodSchema.pick({ projectId: true, userId: true, role: true })), updateMemberRoleController);
+router.get("/members", authentication, getProjectMembersController)
 
 export default router;

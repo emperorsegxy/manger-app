@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
 import { ProjectRole } from "@generated/prisma";
@@ -53,7 +52,7 @@ export const inviteMember = async (input: InviteMemberInput): Promise<void> => {
         },
     });
 
-    const inviteUrl = `${process.env.APP_BASE_URL}/project/accept-invite?token=${plainToken}`;
+    const inviteUrl = `${process.env.APP_BASE_URL}/accept-invite?token=${plainToken}`;
     await sendEmail(
         input.email,
         `You've been invited to join ${project.name}`,
