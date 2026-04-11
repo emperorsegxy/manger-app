@@ -33,11 +33,11 @@ model User {
   password               String
   projects               Project[]
   projectMemberships     ProjectMember[]
-  taskAssignments        TaskAssignee[]
+  itemAssignments        ItemAssignee[]
   sentInvitations        ProjectInvitation[]
-  createdTasks           Task[]
-  taskComments           TaskComment[]
-  taskCommentMentions    TaskCommentMention[]
+  createdItems           Item[]
+  itemComments           ItemComment[]
+  itemCommentMentions    ItemCommentMention[]
   createdAt              DateTime               @default(now())
   isEmailVerified        Boolean                @default(false)
   emailVerificationToken EmailVerificationToken?
@@ -68,6 +68,7 @@ model Project {
   boards      Board[]
   members     ProjectMember[]
   invitations ProjectInvitation[]
+  itemTypes   ItemType[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt()
 }
@@ -113,10 +114,18 @@ model Column {
   order   Int
   board   Board   @relation(fields: [boardId], references: [id])
   boardId String
-  tasks   Task[]
+  items   Item[]
 }
 
-model Task {
+model ItemType {
+  id        String   @id @default(uuid())
+  name      String
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+  items     Item[]
+}
+
+model Item {
   id          String         @id @default(uuid())
   title       String
   description String?
@@ -125,34 +134,36 @@ model Task {
   columnId    String
   creator     User           @relation(fields: [creatorId], references: [id])
   creatorId   String
-  assignees   TaskAssignee[]
-  comments    TaskComment[]
+  type        ItemType?      @relation(fields: [typeId], references: [id])
+  typeId      String?
+  assignees   ItemAssignee[]
+  comments    ItemComment[]
 }
 
-model TaskAssignee {
-  task   Task   @relation(fields: [taskId], references: [id])
-  taskId String
+model ItemAssignee {
+  item   Item   @relation(fields: [itemId], references: [id])
+  itemId String
   user   User   @relation(fields: [userId], references: [id])
   userId String
 
-  @@id([taskId, userId])
+  @@id([itemId, userId])
 }
 
-model TaskComment {
+model ItemComment {
   id        String               @id @default(uuid())
   content   String
-  task      Task                 @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String
+  item      Item                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId    String
   author    User                 @relation(fields: [authorId], references: [id])
   authorId  String
-  mentions  TaskCommentMention[]
+  mentions  ItemCommentMention[]
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
 }
 
-model TaskCommentMention {
+model ItemCommentMention {
   id        String      @id @default(uuid())
-  comment   TaskComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  comment   ItemComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
   commentId String
   user      User        @relation(fields: [userId], references: [id])
   userId    String

@@ -2,22 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { AppError } from "@/errors/AppError";
 import { ProjectRole } from "@generated/prisma";
 import { getProjectMember, hasMinRole } from "@/lib/project-auth";
-import type { TaskAssignee } from "@generated/prisma";
+import type { ItemAssignee } from "@generated/prisma";
 
-type AssignTaskInput = {
-    taskId: string;
+type AssignItemInput = {
+    itemId: string;
     userId: string;
     requestingUserId: string;
 };
 
-export const assignTask = async (input: AssignTaskInput): Promise<TaskAssignee> => {
-    const task = await prisma.task.findUnique({
-        where: { id: input.taskId },
+export const assignItem = async (input: AssignItemInput): Promise<ItemAssignee> => {
+    const item = await prisma.item.findUnique({
+        where: { id: input.itemId },
         include: { column: { include: { board: true } } },
     });
-    if (!task) throw new AppError(404, "Task not found");
+    if (!item) throw new AppError(404, "Item not found");
 
-    const projectId = task.column.board.projectId;
+    const projectId = item.column.board.projectId;
 
     const requestingMember = await getProjectMember(projectId, input.requestingUserId);
     if (!requestingMember || !hasMinRole(requestingMember, ProjectRole.MEMBER)) {
@@ -29,12 +29,12 @@ export const assignTask = async (input: AssignTaskInput): Promise<TaskAssignee> 
         throw new AppError(400, "Assignee must be a member of this project");
     }
 
-    const existing = await prisma.taskAssignee.findUnique({
-        where: { taskId_userId: { taskId: input.taskId, userId: input.userId } },
+    const existing = await prisma.itemAssignee.findUnique({
+        where: { itemId_userId: { itemId: input.itemId, userId: input.userId } },
     });
-    if (existing) throw new AppError(409, "User is already assigned to this task");
+    if (existing) throw new AppError(409, "User is already assigned to this item");
 
-    return prisma.taskAssignee.create({
-        data: { taskId: input.taskId, userId: input.userId },
+    return prisma.itemAssignee.create({
+        data: { itemId: input.itemId, userId: input.userId },
     });
 };

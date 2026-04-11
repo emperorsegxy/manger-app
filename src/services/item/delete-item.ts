@@ -3,17 +3,17 @@ import { AppError } from "@/errors/AppError";
 import { ProjectRole } from "@generated/prisma";
 import { getProjectMember, hasMinRole } from "@/lib/project-auth";
 
-type DeleteTaskInput = {
+type DeleteItemInput = {
     id: string;
     requestingUserId: string;
 };
 
-export const deleteTask = async (input: DeleteTaskInput): Promise<void> => {
-    const existing = await prisma.task.findUnique({
+export const deleteItem = async (input: DeleteItemInput): Promise<void> => {
+    const existing = await prisma.item.findUnique({
         where: { id: input.id },
         include: { column: { include: { board: true } } },
     });
-    if (!existing) throw new AppError(404, "Task not found");
+    if (!existing) throw new AppError(404, "Item not found");
 
     const member = await getProjectMember(existing.column.board.projectId, input.requestingUserId);
     if (!member) throw new AppError(403, "Project not found or access denied");
@@ -22,8 +22,8 @@ export const deleteTask = async (input: DeleteTaskInput): Promise<void> => {
     const isCreator = existing.creatorId === input.requestingUserId;
 
     if (!isAdminOrOwner && !isCreator) {
-        throw new AppError(403, "You can only delete tasks you created");
+        throw new AppError(403, "You can only delete items you created");
     }
 
-    await prisma.task.delete({ where: { id: input.id } });
+    await prisma.item.delete({ where: { id: input.id } });
 };

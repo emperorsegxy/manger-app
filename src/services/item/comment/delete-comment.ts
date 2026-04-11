@@ -9,13 +9,13 @@ type DeleteCommentInput = {
 };
 
 export const deleteComment = async (input: DeleteCommentInput): Promise<void> => {
-    const comment = await prisma.taskComment.findUnique({
+    const comment = await prisma.itemComment.findUnique({
         where: { id: input.id },
-        include: { task: { include: { column: { include: { board: true } } } } },
+        include: { item: { include: { column: { include: { board: true } } } } },
     });
     if (!comment) throw new AppError(404, "Comment not found");
 
-    const projectId = comment.task.column.board.projectId;
+    const projectId = comment.item.column.board.projectId;
 
     const member = await getProjectMember(projectId, input.requestingUserId);
     if (!member) throw new AppError(403, "Project not found or access denied");
@@ -27,5 +27,5 @@ export const deleteComment = async (input: DeleteCommentInput): Promise<void> =>
         throw new AppError(403, "You can only delete your own comments");
     }
 
-    await prisma.taskComment.delete({ where: { id: input.id } });
+    await prisma.itemComment.delete({ where: { id: input.id } });
 };

@@ -23,7 +23,7 @@ export const deleteColumn = async (input: DeleteColumnInput): Promise<void> => {
     }
 
     await prisma.$transaction([
-        prisma.task.deleteMany({ where: { columnId: input.id } }),
+        prisma.item.deleteMany({ where: { columnId: input.id } }),
         prisma.column.delete({ where: { id: input.id } }),
     ]);
 };

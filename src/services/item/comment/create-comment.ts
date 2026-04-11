@@ -8,20 +8,20 @@ import juice from "juice";
 import type { CommentWithDetails } from "./get-comments";
 
 type CreateCommentInput = {
-    taskId: string;
+    itemId: string;
     content: string;
     mentionedUserIds?: string[];
     requestingUserId: string;
 };
 
 export const createComment = async (input: CreateCommentInput): Promise<CommentWithDetails> => {
-    const task = await prisma.task.findUnique({
-        where: { id: input.taskId },
+    const item = await prisma.item.findUnique({
+        where: { id: input.itemId },
         include: { column: { include: { board: { include: { project: true } } } } },
     });
-    if (!task) throw new AppError(404, "Task not found");
+    if (!item) throw new AppError(404, "Item not found");
 
-    const { board } = task.column;
+    const { board } = item.column;
     const { project } = board;
 
     const member = await getProjectMember(project.id, input.requestingUserId);
@@ -53,10 +53,10 @@ export const createComment = async (input: CreateCommentInput): Promise<CommentW
         select: { firstName: true, lastName: true },
     });
 
-    const comment = await prisma.taskComment.create({
+    const comment = await prisma.itemComment.create({
         data: {
             content: input.content,
-            taskId: input.taskId,
+            itemId: input.itemId,
             authorId: input.requestingUserId,
             mentions: {
                 create: (input.mentionedUserIds ?? []).map((userId) => ({ userId })),
@@ -80,11 +80,11 @@ export const createComment = async (input: CreateCommentInput): Promise<CommentW
             mentionedUsers.map((u) =>
                 sendEmail(
                     u.email,
-                    `${authorName} mentioned you in a comment on "${task.title}"`,
+                    `${authorName} mentioned you in a comment on "${item.title}"`,
                     juice(`
                         <div style="font-family: sans-serif; color: #111;">
                             <p>Hi ${u.firstName},</p>
-                            <p><strong>${authorName}</strong> mentioned you in a comment on task <strong>"${task.title}"</strong> in project <strong>${project.name}</strong>.</p>
+                            <p><strong>${authorName}</strong> mentioned you in a comment on item <strong>"${item.title}"</strong> in project <strong>${project.name}</strong>.</p>
                             <div style="border-left: 3px solid #6366f1; padding: 8px 16px; margin: 16px 0; background: #f5f5f5;">
                                 ${inlinedContent}
                             </div>

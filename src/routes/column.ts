@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/list", authentication, getColumnListController);
 router.post("/create", authentication, validateZodSchema(ColumnUncheckedCreateInputObjectZodSchema.pick({ name: true, boardId: true, order: true })), createColumnController);
 router.post("/create-many", authentication, createManyColumnsController);
-router.patch("/update", authentication, validateZodSchema(ColumnUncheckedCreateInputObjectZodSchema.pick({ id: true, name: true }).required()), updateColumnController);
+router.patch("/update", authentication, validateZodSchema(ColumnUncheckedCreateInputObjectZodSchema.pick({ id: true, name: true, order: true }).required({ id: true }).partial({ name: true, order: true })), updateColumnController);
 router.delete("/delete", authentication, validateZodSchema(ColumnUncheckedCreateInputObjectZodSchema.pick({ id: true }).required()), deleteColumnController);
 
 export default router;

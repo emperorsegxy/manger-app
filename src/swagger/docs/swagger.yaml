@@ -7,7 +7,7 @@ info:
     All protected endpoints require a Bearer JWT token obtained from `POST /user/authenticate`.
 
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:43211
 
 security:
   - BearerAuth: []
@@ -19,8 +19,10 @@ tags:
     description: Project CRUD and membership management
   - name: Board
     description: Board management within a project
-  - name: Task
-    description: Task management within a board column, including comments and mentions
+  - name: Item
+    description: Item management within a board column, including comments and mentions
+  - name: ItemType
+    description: Item type management — system-wide defaults (task, bug, story, epic) and project-scoped custom types
 
 # ─── Paths ───────────────────────────────────────────────────────────────────
 
@@ -302,7 +304,7 @@ paths:
 
   /project/delete:
     delete:
-      summary: Delete a project and all its boards, columns, and tasks (owner only)
+      summary: Delete a project and all its boards, columns, and items (owner only)
       tags: [Project]
       requestBody:
         required: true
@@ -568,7 +570,7 @@ paths:
 
   /board/delete:
     delete:
-      summary: Delete a board and all its columns and tasks (owner or admin only)
+      summary: Delete a board and all its columns and items (owner or admin only)
       tags: [Board]
       requestBody:
         required: true
@@ -587,23 +589,55 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  # ── Task ─────────────────────────────────────────────────────────────────────
+  # ── Item ─────────────────────────────────────────────────────────────────────
 
-  /task/list:
+  /item/list:
     get:
-      summary: List all tasks in a column
-      description: Accessible by any project member including VIEWERs. Tasks are returned ordered by `order` ascending.
-      tags: [Task]
+      summary: List items in a board with optional filters
+      description: >
+        Accessible by any project member including VIEWERs. Items are returned ordered by `order` ascending.
+        Optionally filter by `columnIds` (status), `assigneeIds`, and/or `typeIds` — each accepts multiple values.
+      tags: [Item]
       parameters:
         - in: query
-          name: columnId
+          name: boardId
           required: true
           schema:
             type: string
             format: uuid
+        - in: query
+          name: columnIds
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+          style: form
+          explode: true
+        - in: query
+          name: assigneeIds
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+          style: form
+          explode: true
+        - in: query
+          name: typeIds
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+          style: form
+          explode: true
       responses:
         "200":
-          description: Successfully retrieved tasks
+          description: Successfully retrieved items
           content:
             application/json:
               schema:
@@ -617,19 +651,20 @@ paths:
                           items:
                             type: array
                             items:
-                              $ref: "#/components/schemas/Task"
+                              $ref: "#/components/schemas/Item"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /task/create:
+  /item/create:
     post:
-      summary: Create a task in a column (member, admin, or owner)
+      summary: Create an item in a column (member, admin, or owner)
       description: >
         `order` is auto-assigned as the next available position in the column.
-        The authenticated user is recorded as the task creator.
-      tags: [Task]
+        The authenticated user is recorded as the item creator.
+        Optionally supply a `typeId` to set the item type (task, bug, story, epic, or a custom project type).
+      tags: [Item]
       requestBody:
         required: true
         content:
@@ -646,9 +681,14 @@ paths:
                 columnId:
                   type: string
                   format: uuid
+                typeId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: ID of an ItemType (system-wide or project-scoped)
       responses:
         "201":
-          description: Task created successfully
+          description: Item created successfully
           content:
             application/json:
               schema:
@@ -659,18 +699,18 @@ paths:
                       data:
                         type: object
                         properties:
-                          task:
-                            $ref: "#/components/schemas/Task"
+                          item:
+                            $ref: "#/components/schemas/Item"
         "403":
           $ref: "#/components/responses/Forbidden"
 
-  /task/update:
+  /item/update:
     patch:
-      summary: Update a task (member, admin, or owner)
+      summary: Update an item (member, admin, or owner)
       description: >
-        All fields are optional except `id`. Providing a new `columnId` moves the task to that column —
-        the target column must belong to the same project. Providing a new `order` reorders the task within its column.
-      tags: [Task]
+        All fields are optional except `id`. Providing a new `columnId` moves the item to that column —
+        the target column must belong to the same project. Providing a new `order` reorders the item within its column.
+      tags: [Item]
       requestBody:
         required: true
         content:
@@ -693,10 +733,14 @@ paths:
                 columnId:
                   type: string
                   format: uuid
-                  description: Move task to this column (must be in the same project)
+                  description: Move item to this column (must be in the same project)
+                typeId:
+                  type: string
+                  format: uuid
+                  nullable: true
       responses:
         "200":
-          description: Task updated successfully
+          description: Item updated successfully
           content:
             application/json:
               schema:
@@ -707,21 +751,21 @@ paths:
                       data:
                         type: object
                         properties:
-                          task:
-                            $ref: "#/components/schemas/Task"
+                          item:
+                            $ref: "#/components/schemas/Item"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /task/delete:
+  /item/delete:
     delete:
-      summary: Delete a task
+      summary: Delete an item
       description: >
-        Owners and admins can delete any task.
-        Members can only delete tasks they created.
-        VIEWERs cannot delete tasks.
-      tags: [Task]
+        Owners and admins can delete any item.
+        Members can only delete items they created.
+        VIEWERs cannot delete items.
+      tags: [Item]
       requestBody:
         required: true
         content:
@@ -741,22 +785,58 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /task/assign:
+  /item/assignees:
+    get:
+      summary: List all assignees of an item
+      description: Accessible by any project member including VIEWERs.
+      tags: [Item]
+      parameters:
+        - in: query
+          name: itemId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved assignees
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          assignees:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ItemAssigneeWithUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /item/assign:
     post:
-      summary: Assign a project member to a task
+      summary: Assign a project member to an item
       description: >
         The assignee must be an existing member of the project.
         Requires at least MEMBER role.
-      tags: [Task]
+      tags: [Item]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [taskId, userId]
+              required: [itemId, userId]
               properties:
-                taskId:
+                itemId:
                   type: string
                   format: uuid
                 userId:
@@ -764,7 +844,7 @@ paths:
                   format: uuid
       responses:
         "201":
-          description: User assigned to task
+          description: User assigned to item
           content:
             application/json:
               schema:
@@ -776,7 +856,7 @@ paths:
                         type: object
                         properties:
                           assignment:
-                            $ref: "#/components/schemas/TaskAssignee"
+                            $ref: "#/components/schemas/ItemAssignee"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -786,20 +866,20 @@ paths:
         "409":
           $ref: "#/components/responses/Conflict"
 
-  /task/unassign:
+  /item/unassign:
     delete:
-      summary: Remove a user's assignment from a task
+      summary: Remove a user's assignment from an item
       description: Requires at least MEMBER role in the project.
-      tags: [Task]
+      tags: [Item]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [taskId, userId]
+              required: [itemId, userId]
               properties:
-                taskId:
+                itemId:
                   type: string
                   format: uuid
                 userId:
@@ -813,14 +893,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /task/comment/list:
+  /item/comment/list:
     get:
-      summary: List all comments on a task
+      summary: List all comments on an item
       description: Accessible by any project member including VIEWERs. Returns comments ordered by `createdAt` ascending, each with author info and mentioned users.
-      tags: [Task]
+      tags: [Item]
       parameters:
         - in: query
-          name: taskId
+          name: itemId
           required: true
           schema:
             type: string
@@ -841,7 +921,7 @@ paths:
                           items:
                             type: array
                             items:
-                              $ref: "#/components/schemas/TaskComment"
+                              $ref: "#/components/schemas/ItemComment"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -849,23 +929,23 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /task/comment/create:
+  /item/comment/create:
     post:
-      summary: Add a comment to a task
+      summary: Add a comment to an item
       description: >
         Any project member (MEMBER, ADMIN, or OWNER) can comment.
         Optionally tag other project members via `mentionedUserIds` — each id must belong to a project member.
-        Tagged users are recorded and can later be used for notifications.
-      tags: [Task]
+        Tagged users receive a mention notification email.
+      tags: [Item]
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [taskId, content]
+              required: [itemId, content]
               properties:
-                taskId:
+                itemId:
                   type: string
                   format: uuid
                 content:
@@ -891,7 +971,7 @@ paths:
                         type: object
                         properties:
                           comment:
-                            $ref: "#/components/schemas/TaskComment"
+                            $ref: "#/components/schemas/ItemComment"
         "400":
           $ref: "#/components/responses/BadRequest"
         "403":
@@ -899,14 +979,111 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /task/comment/delete:
+  /item/comment/delete:
     delete:
       summary: Delete a comment
       description: >
         The comment author can always delete their own comment.
-        Project owners and admins can delete any comment on tasks within their project.
+        Project owners and admins can delete any comment on items within their project.
         VIEWERs cannot delete comments.
-      tags: [Task]
+      tags: [Item]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          $ref: "#/components/responses/MessageOnly"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── ItemType ──────────────────────────────────────────────────────────────────
+
+  /item-type/list:
+    get:
+      summary: List item types available in a project
+      description: Returns system-wide types (task, bug, story, epic) plus any custom types created for this project.
+      tags: [ItemType]
+      parameters:
+        - in: query
+          name: projectId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Successfully retrieved item types
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          itemTypes:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/ItemType"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /item-type/create:
+    post:
+      summary: Create a custom item type for a project (admin or owner only)
+      tags: [ItemType]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, projectId]
+              properties:
+                name:
+                  type: string
+                projectId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Item type created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          itemType:
+                            $ref: "#/components/schemas/ItemType"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /item-type/delete:
+    delete:
+      summary: Delete a custom item type (admin or owner only)
+      description: Only project-scoped custom types can be deleted. System-wide types (task, bug, story, epic) cannot be deleted.
+      tags: [ItemType]
       requestBody:
         required: true
         content:
@@ -1105,7 +1282,21 @@ components:
           type: string
           format: uuid
 
-    Task:
+    ItemType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        projectId:
+          type: string
+          format: uuid
+          nullable: true
+          description: null for system-wide types, project ID for custom types
+
+    Item:
       type: object
       properties:
         id:
@@ -1124,16 +1315,35 @@ components:
         creatorId:
           type: string
           format: uuid
+        typeId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          $ref: "#/components/schemas/ItemType"
+          nullable: true
 
-    TaskAssignee:
+    ItemAssignee:
       type: object
       properties:
-        taskId:
+        itemId:
           type: string
           format: uuid
         userId:
           type: string
           format: uuid
+
+    ItemAssigneeWithUser:
+      type: object
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        user:
+          $ref: "#/components/schemas/UserSummary"
 
     UserSummary:
       type: object
@@ -1150,7 +1360,7 @@ components:
           type: string
           nullable: true
 
-    TaskCommentMention:
+    ItemCommentMention:
       type: object
       properties:
         id:
@@ -1165,7 +1375,7 @@ components:
         user:
           $ref: "#/components/schemas/UserSummary"
 
-    TaskComment:
+    ItemComment:
       type: object
       properties:
         id:
@@ -1173,7 +1383,7 @@ components:
           format: uuid
         content:
           type: string
-        taskId:
+        itemId:
           type: string
           format: uuid
         authorId:
@@ -1184,7 +1394,7 @@ components:
         mentions:
           type: array
           items:
-            $ref: "#/components/schemas/TaskCommentMention"
+            $ref: "#/components/schemas/ItemCommentMention"
         createdAt:
           type: string
           format: date-time
