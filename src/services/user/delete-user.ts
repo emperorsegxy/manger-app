@@ -6,8 +6,8 @@ export const deleteUser = async (userId: string): Promise<void> => {
     if (!user) throw new AppError(404, "User not found");
 
     await prisma.$transaction([
-        prisma.taskAssignee.deleteMany({ where: { userId } }),
-        prisma.task.deleteMany({ where: { column: { board: { project: { ownerId: userId } } } } }),
+        prisma.itemAssignee.deleteMany({ where: { userId } }),
+        prisma.item.deleteMany({ where: { column: { board: { project: { ownerId: userId } } } } }),
         prisma.column.deleteMany({ where: { board: { project: { ownerId: userId } } } }),
         prisma.board.deleteMany({ where: { project: { ownerId: userId } } }),
         prisma.projectMember.deleteMany({ where: { userId } }),

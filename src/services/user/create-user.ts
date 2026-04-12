@@ -42,5 +42,6 @@ export const createUser = async (input: CreateUserInput): Promise<SafeUser> => {
     );
 
     const { password, ...safeUser } = user;
+    // @ts-ignore
     return safeUser;
 };

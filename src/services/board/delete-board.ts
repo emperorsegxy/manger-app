@@ -20,7 +20,7 @@ export const deleteBoard = async (input: DeleteBoardInput): Promise<void> => {
     }
 
     await prisma.$transaction([
-        prisma.task.deleteMany({ where: { column: { boardId: input.id } } }),
+        prisma.item.deleteMany({ where: { column: { boardId: input.id } } }),
         prisma.column.deleteMany({ where: { boardId: input.id } }),
         prisma.board.delete({ where: { id: input.id } }),
     ]);

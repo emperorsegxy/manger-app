@@ -15,7 +15,7 @@ export const deleteProject = async (input: DeleteProjectInput): Promise<void> =>
     }
 
     await prisma.$transaction([
-        prisma.task.deleteMany({ where: { column: { board: { projectId: input.id } } } }),
+        prisma.item.deleteMany({ where: { column: { board: { projectId: input.id } } } }),
         prisma.column.deleteMany({ where: { board: { projectId: input.id } } }),
         prisma.board.deleteMany({ where: { projectId: input.id } }),
         prisma.projectMember.deleteMany({ where: { projectId: input.id } }),
