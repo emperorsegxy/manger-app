@@ -7,7 +7,6 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "baseUrl": "./src",
     "paths": {
       "@/*": ["*"],
       "@controllers/*": ["controllers/*"],
