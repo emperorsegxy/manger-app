@@ -8,11 +8,11 @@
     "skipLibCheck": true,
     "outDir": "dist",
     "paths": {
-      "@/*": ["*"],
-      "@controllers/*": ["controllers/*"],
-      "@services/*": ["services/*"],
-      "@middlewares/*": ["middlewares/*"],
-      "@generated/*": ["../generated/*"]
+      "@/*": ["./src/*"],
+      "@controllers/*": ["./src/controllers/*"],
+      "@services/*": ["./src/services/*"],
+      "@middlewares/*": ["./src/middlewares/*"],
+      "@generated/*": ["./generated/*"]
     }
   },
   "include": ["src"]
